@@ -1,0 +1,8 @@
+Monitor serial do Wokwi depois das correções da revisão do Codex (12/11/2026, código final, tempos normais).
+A distância agora sai exata (100 cm e 200 cm) e a liberação levou exatamente 15 s (candidato em t=7s, confirmado em t=22s).
+
+t=2s | T 26.0C U 50% IC 26.0C (normal) | faixa 100cm lida estreita / vale estreita | STATUS 1 ATENCAO | motivo 1 calcada
+t=7s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale estreita | STATUS 1 ATENCAO | motivo 1 calcada
+t=12s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale estreita | STATUS 1 ATENCAO | motivo 1 calcada
+t=17s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale estreita | STATUS 1 ATENCAO | motivo 1 calcada
+t=22s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum

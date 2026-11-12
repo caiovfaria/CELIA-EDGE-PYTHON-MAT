@@ -1,0 +1,4 @@
+# Bibliotecas usadas pelo Wokwi (uma por linha)
+Adafruit GFX Library
+Adafruit SSD1306
+DHT sensor library for ESPx
