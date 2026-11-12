@@ -1,0 +1,32 @@
+# Wokwi, 12/11/2026, código corrigido depois da revisão 1 do Codex, com uma chave FALSA de teste
+# ("CHAVE_FALSA_DE_TESTE", trocada só no editor do navegador embutido, sem salvar; não é chave de verdade).
+# Objetivo: fazer o pedido HTTP real sair pela tarefa de rede, com o Wi-Fi do Wokwi conectado.
+# O que mostra:
+# - o ThingSpeak responde 400 para chave inválida, e o serial avisa "falha no envio (codigo 400)";
+# - enquanto cada pedido espera a resposta, o loop() continua: as leituras saem exatamente a cada 5 s
+#   (t=24, 29, 34, ...), sem atraso nenhum, antes e depois de cada tentativa;
+# - as tentativas saem uma a cada ~20 s (avisos entre t=24-29, t=44-49 e t=64-69), contando do fim da anterior;
+# - nenhum registro foi gravado no canal (a chave é inválida).
+C.E.L.I.A. - modulo Edge iniciado
+Confirmacao da calcada: 15 s (modo demonstracao)
+Conectando ao Wi-Fi Wokwi-GUEST
+t=3s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+Wi-Fi conectado.
+t=9s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=14s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=19s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=24s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+ThingSpeak: falha no envio (codigo 400). Tenta de novo no proximo envio.
+t=29s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=34s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=39s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=44s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+ThingSpeak: falha no envio (codigo 400). Tenta de novo no proximo envio.
+t=49s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=54s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=59s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=64s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+ThingSpeak: falha no envio (codigo 400). Tenta de novo no proximo envio.
+t=69s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=74s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=79s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum

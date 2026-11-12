@@ -1,0 +1,34 @@
+# Wokwi, 12/11/2026, código corrigido depois da revisão 1 do Codex (envio na tarefa de rede).
+# Navegador embutido do app do Claude; desta vez o Wi-Fi do Wokwi conectou.
+# Arquivos no Wokwi conferidos por SHA-256: sketch.ino a5533a85dc8a, celia_logica.h 026db9d627e1,
+# diagram.json 2e53329e65e3, libraries.txt 095efa3f9a4a. Chave de exemplo (como está no GitHub).
+# O que mostra: compila e roda no ESP32; a tarefa de rede age a cada ~20 s ("cole a Write API Key");
+# as leituras do loop() saem a cada 5 s, sem atraso, em linhas inteiras (sem mistura com a outra tarefa).
+# Observação: da 1ª para a 2ª leitura passam 6 s (t=3s -> t=9s), por causa da conexão do Wi-Fi do
+# simulador logo depois de ligar; o mesmo aconteceu com o código antigo. Depois, sempre 5 s.
+C.E.L.I.A. - modulo Edge iniciado
+Confirmacao da calcada: 15 s (modo demonstracao)
+Conectando ao Wi-Fi Wokwi-GUEST
+t=3s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+Wi-Fi conectado.
+t=9s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=14s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=19s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+ThingSpeak: cole a Write API Key no sketch para enviar.
+t=24s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=29s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=34s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=39s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+ThingSpeak: cole a Write API Key no sketch para enviar.
+t=44s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=49s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=54s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=59s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=64s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+ThingSpeak: cole a Write API Key no sketch para enviar.
+t=69s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=74s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=79s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=84s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+ThingSpeak: cole a Write API Key no sketch para enviar.
+t=89s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum

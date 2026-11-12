@@ -20,8 +20,8 @@ A C.E.L.I.A. é uma caixinha com ESP32 instalada em postes perto de pontos de ô
 
 | Pasta | Conteúdo | Estado |
 |---|---|---|
-| `edge/` | Projeto do Wokwi: `sketch.ino`, `celia_logica.h`, `diagram.json`, `libraries.txt`, roteiro e evidências | Etapa 1 aprovada pelo Codex na revisão 4 (12/11). Aguarda a aprovação do aluno |
-| `tests/` | `teste_logica.cpp` (regras) e `teste_sketch.cpp` (sketch inteiro com sensores falsos de `arduino_falso/`) | 97 + 16 verificações passando |
+| `edge/` | Projeto do Wokwi: `sketch.ino`, `celia_logica.h`, `diagram.json`, `libraries.txt`, roteiro, guia do ThingSpeak (`THINGSPEAK.md`) e evidências | Etapa 1 aprovada pelo Codex (revisão 4) e pelo aluno, no commit `13fab0d` (12/11). Etapa 2 (ThingSpeak): 11 registros reais no canal 3577155 na primeira versão. A revisão 1 do Codex pediu 4 correções médias, já feitas: rede numa tarefa separada, 20 s contados do fim, nenhum envio com os dois sensores falhando e a chave fora do projeto público. A revisão 2 pediu mais 2 correções médias, também feitas: conferir a criação da fila e da tarefa, e o field5 representa a leitura capturada. Também 2 leves: medir a pilha e reconectar só depois de 1 min. Revisão 3 concluída e ajustes leves aplicados. A rodada do aluno no Wokwi com um envio aceito, status 2 e medição de pilha segue pendente |
+| `tests/` | `teste_logica.cpp` (regras) e `teste_sketch.cpp` (sketch inteiro com sensores, Wi-Fi, ThingSpeak e FreeRTOS falsos de `arduino_falso/`) | 97 + 56 verificações passando |
 | `visao/` | Treino do modelo de buracos e API Flask | Etapas 3 e 4 |
 | `prompts.md` | Registro de uso de IA (exigido pela FIAP) | Atualizar a cada sessão |
 
@@ -39,7 +39,10 @@ Os limites vêm da Documentação do Módulo Edge e **ainda estão em validaçã
 | HC-SR04 | Distância = eco (µs) ÷ 58,8, cortada para cm inteiros. O valor 58,8 µs/cm foi medido em 28 ecos do Wokwi, de 50 a 400 cm, com variação de ±3 µs (`edge/evidencias/calibracao_hc_sr04.md`). Tolerância efetiva: 0,08 cm (0,8 mm), que cobre a maior falta medida (0,054 cm) com cerca de 1,5 µs de sobra. Bordas: 7051 µs = 119 (estreita) e 7052 µs = 120 (livre); 5287 µs = 89 (bloqueada) e 5288 µs = 90 (estreita) |
 | Falha de sensor | Sem leitura válida na partida: OLED "SEM DADOS" e LED apagado. Falha depois: mantém o último valor, avisa no OLED e cancela a confirmação da calçada em andamento |
 | Tempos | Leitura a cada 5 s · mudança na calçada confirmada após 1 min (15 s com `MODO_DEMONSTRACAO`) · ThingSpeak a cada 20 s · foto vale 10 min |
-| ThingSpeak | field1 temperatura · field2 umidade · field3 índice de calor · field4 distância · field5 status · field6 motivo |
+| ThingSpeak | Canal público `GS-EDGE-C.E.L.I.A.`, ID `3577155`. field1 temperatura · field2 umidade · field3 índice de calor · field4 distância · field5 status · field6 motivo. Projeto do Wokwi: https://wokwi.com/projects/480457503878659073 |
+| Envio (Etapa 2) | HTTP simples (`api.thingspeak.com/update`) pelo Wi-Fi `Wokwi-GUEST` (canal 6). O envio roda numa **tarefa de rede** do FreeRTOS, separada do `loop()`. O `loop()` só lê, decide e mostra, e deixa um pacote com os dados numa fila de 1 lugar (`xQueueOverwrite`). A tarefa pega o pacote mais novo (`xQueueReceive`) e envia. Próximo envio 20 s depois do **fim** do anterior. A fila e a tarefa são criadas em `iniciarEnvio()`. Se faltar memória, o poste avisa no serial e segue sem envio. Se a tarefa não for criada, a fila é liberada (`vQueueDelete`) e volta a `NULL`. Cada registro leva a última leitura antes do envio (até ~5 s antes), e o field5 é o status dessa leitura: o LED pode mudar durante um pedido lento, e a mudança vai no envio seguinte. A tarefa mede a sobra da pilha (`uxTaskGetStackHighWaterMark`) e avisa quando ela diminui. Não envia: com "SEM DADOS", com os dois sensores falhando, sem leitura nova, com a chave de exemplo ou sem Wi-Fi. O ESP32 reconecta sozinho; depois de 1 min sem conexão, o sketch força `WiFi.reconnect()`, no máximo uma vez por minuto. Se um só sensor falhou, os campos dele ficam de fora. Limites por operação: 5 s para conectar e 5 s para a resposta. A busca do endereço (DNS) não tem limite próprio, então não há teto total para o pedido. Como ele roda na tarefa de rede, isso não trava o poste. A chave nunca aparece no serial. Mensagens do serial saem numa linha só (`snprintf`), para as duas tarefas não se misturarem. HTTPS com certificado fica como melhoria (`edge/THINGSPEAK.md`) |
+| Chave no Wokwi | O projeto salvo no Wokwi é público: fica sempre com `COLE_SUA_CHAVE_AQUI`. A chave entra só enquanto a simulação roda, sem SAVE. Se ela ficar salva no projeto público, gere uma nova no ThingSpeak |
+| Pendente com a equipe | (1) Índice de calor fora da faixa da fórmula (ex.: 80 °C e 100% → 708,7 °C): não enviar o field3 nesses casos e como sinalizar "calor extremo" ao app (Codex, revisão 1). (2) Se o app precisar do horário exato da leitura, e não só do horário da gravação no ThingSpeak, mandar esse horário num campo extra (Codex, revisão 2) |
 | MQTT (Etapa 4) | `broker.hivemq.com`, tópico `celia/poste01/camera`, valores livre/obstaculo/buraco **com o horário junto** (um resultado antigo retido no broker não pode valer como novo) |
 
 ## Circuito (Wokwi)
@@ -59,7 +62,7 @@ O projeto usa só peças nativas do Wokwi (`wokwi-esp32-devkit-v1`, `wokwi-ssd13
 - Código simples, de 1º ano, comentado em português. A equipe precisa saber explicar cada parte.
 - A lógica de decisão fica em `celia_logica.h`, sem nada de hardware, para poder ser testada no computador. Se mudar uma regra ou o sketch, atualize e rode os dois testes.
 - Tempos do confirmador em `uint32_t` (32 bits, como o `millis()` do ESP32).
-- Nenhuma chave no repositório: a chave do ThingSpeak fica como `COLE_SUA_CHAVE_AQUI`.
+- Nenhuma chave no repositório: a chave do ThingSpeak fica como `COLE_SUA_CHAVE_AQUI` (o aluno cola a dele só no Wokwi). As IAs não recebem nem digitam a chave.
 - Nada de dados pessoais reais. Fotos sem rostos nem placas.
 - Registre no `prompts.md` os prompts das duas IAs (data, qual IA, pedido, resultado).
 - Não mexa na parte de outros integrantes.

@@ -50,22 +50,4 @@ Antes do teste, os 4 arquivos colados no Wokwi foram comparados com os da pasta 
 | teste_final/pessoa_passando_confirmando.png | Distância vai a 50 cm | OLED: "Confirmando... 15s" e "Faixa 50cm bloqueada", status ainda ACESSIVEL |
 | teste_final/pessoa_passou_continua_acessivel.png | Volta a 200 cm antes de 15 s | Continua ACESSIVEL: a obstrução rápida não mudou o status |
 
-Os passos com espera de 15 s (calçada estreita, bloqueada e liberação) não foram repetidos com o tempo normal neste teste. Com a aba do navegador em segundo plano, a simulação rodou a 3–4% da velocidade real, e cada passo levaria vários minutos. Esses passos foram conferidos no teste da tarde, abaixo, com o tempo acelerado. O cenário de 15 s também está coberto no teste da lógica (`tests/teste_logica.cpp`, parte 5).
-
-## Teste da tarde (tempo acelerado para os passos com espera)
-
-| Arquivo | Situação | Resultado |
-|---|---|---|
-| 02_livre_calor_atencao.png | 32 °C e 200 cm | Amarelo · ATENCAO · motivo calor (índice de calor 34,4 °C) |
-| 03_confirmando_mudanca.png | Distância muda para 100 cm | OLED mostra "Confirmando..." e o status ainda não mudou |
-| 04_estreita_atencao.png | 26 °C e 100 cm, já confirmado | Amarelo · ATENCAO · motivo calcada |
-| 05_estreita_calor_evite.png | 38 °C e 100 cm | Vermelho · EVITE · motivo calcada+calor (índice de calor 48,6 °C) |
-| 06_bloqueada_evite.png | 26 °C e 50 cm, já confirmado | Vermelho · EVITE · motivo calcada |
-| 07_liberado_acessivel.png | Volta para 200 cm, já confirmado | Verde · ACESSIVEL · motivo nenhum |
-
-Observações:
-
-- No computador usado no teste, a simulação rodou devagar (de 3% a 18% da velocidade real). Por isso, os prints 03 a 07 foram tirados com um **teste acelerado**: leitura a cada 1 s e confirmação de 3 s, em vez de 5 s e 15 s. A lógica é a mesma, só mudam as duas constantes. Depois do teste, o código voltou aos valores normais.
-- Com os valores normais (15 s), a equipe deve tirar os prints finais para o README seguindo o `ROTEIRO_DEMO.md`.
-- O teste de "pessoa passando" também foi feito com os valores normais: a distância foi a 50 cm por uma leitura e voltou para 200 cm. O status continuou ACESSIVEL.
-- No navegador do teste, os fios não apareceram desenhados na tela, mas as ligações funcionaram (sensores, OLED e LED responderam). Ao colar o `diagram.json` no Wokwi e recarregar a página, os fios devem aparecer.
+Os cenários de estreitamento, bloqueio e liberação estão na rodada de 12/11, com leitura de 5 s e confirmação de 15 s. O ensaio preliminar acelerado está no histórico da Etapa 1 (commit 13fab0d).

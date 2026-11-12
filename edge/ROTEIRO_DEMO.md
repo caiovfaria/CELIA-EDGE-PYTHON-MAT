@@ -1,6 +1,6 @@
-# Roteiro de demonstração · Etapa 1 (Wokwi)
+# Roteiro de demonstração · Etapas 1 e 2 (Wokwi e ThingSpeak)
 
-Como mostrar, no Wokwi, que o poste decide sozinho o status do trecho.
+Como mostrar, no Wokwi, que o poste decide sozinho o status do trecho e manda tudo para o canal público do ThingSpeak.
 
 **Durante a simulação, clique no sensor para abrir os controles:**
 - no **DHT22**, você muda a temperatura e a umidade;
@@ -50,6 +50,28 @@ O monitor serial mostra uma linha por leitura (`t=...s | T ... | faixa ... | STA
 - **OLED em branco:** confira se o endereço é `0x3C` e se DATA está no D21 e CLK no D22.
 - **OLED com "SEM DADOS" e LED apagado na partida:** algum sensor ainda não respondeu. É o comportamento esperado: sem leitura, o poste não decide (na dúvida, não fica verde).
 - **"Aviso: falha HC-SR04" ou "Aviso: falha DHT22" na linha de cima:** o sensor falhou na última leitura e o OLED mostra o último valor válido. Se a calçada estava mudando, a contagem recomeça na próxima leitura válida.
+
+## Etapa 2: dados no ThingSpeak
+
+Antes, cole a Write API Key no `sketch.ino` do Wokwi, como explica o `THINGSPEAK.md`. A chave entra só enquanto a simulação roda: **não salve o projeto com ela**, nem mostre essa linha nos prints. A chave nunca vai para o GitHub.
+
+1. Abra o canal público em outra aba: https://thingspeak.mathworks.com/channels/3577155
+2. Rode a simulação com a aba do Wokwi na frente. Em 20 a 40 s, o monitor serial mostra `Wi-Fi conectado.` e depois `ThingSpeak: registro N gravado (status 0, motivo 0)`.
+3. Repita os passos 1 a 7 da tabela acima. A cada 20 s sai um envio, e os gráficos do canal acompanham:
+   - field3 (índice de calor) sobe nos passos 2, 3 e 5;
+   - field4 (distância) cai nos passos 4 e 6;
+   - field5 (status) acompanha a cor do LED: 0 verde, 1 amarelo, 2 vermelho. Cada envio leva a última leitura antes dele, então a mudança aparece no envio seguinte;
+   - field6 (motivo) mostra 1 (calçada), 2 (calor) ou 3 (os dois).
+4. **Sem internet não trava:** o envio roda numa tarefa separada. O poste continua decidindo e mostrando no OLED e no LED, com uma leitura a cada 5 s. O serial avisa `sem Wi-Fi, envio pulado` e tenta reconectar no próximo envio.
+5. Quando terminar, volte a linha da chave para `COLE_SUA_CHAVE_AQUI` antes de salvar o projeto.
+
+O canal recebe no máximo um envio a cada 15 s. Não rode o mesmo projeto em duas abas ao mesmo tempo: os envios das duas se atropelam e o ThingSpeak recusa parte deles.
+
+**Prints para o README (Etapa 2):**
+
+1. Monitor serial com `Wi-Fi conectado.` e `ThingSpeak: registro ... gravado`
+2. Página do canal com os gráficos de índice de calor, distância e status mudando
+3. Wokwi com o LED vermelho e, ao lado, o gráfico do field5 em 2 no mesmo momento
 
 ## Bordas da calçada (para conferir no simulador)
 
