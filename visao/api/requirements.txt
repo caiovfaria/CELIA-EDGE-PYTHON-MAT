@@ -4,3 +4,5 @@ python-multipart
 ultralytics
 pillow
 paho-mqtt
+google-genai
+python-dotenv

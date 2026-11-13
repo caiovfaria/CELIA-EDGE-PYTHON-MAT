@@ -1,4 +1,22 @@
-# Status da visao computacional (atualizado em 12/11/2026)
+# Status da visao computacional (atualizado em 13/11/2026)
+
+## Pendencias em 13/11/2026 (modelo de buracos e assistente Gemini funcionando)
+
+Feito em 13/11: assistente (/assistente/trajeto e /assistente/descricao), trilha (GET /trilha) e correcao do carregamento sem fim (timeout de 20 s e sem repeticao automatica da biblioteca). Guia do app para o Isaac em INTEGRACAO.md, secao 7.
+
+1. **Mini trilha de IA para o trabalho [HU-19, RF18, RNF08]:** hoje sao 5 licoes de rascunho em `api/dados/trilha.json`. Falta definir com a equipe os temas, revisar os textos e conferir RNF08 (texto simples, leitor de tela).
+2. **Imagem junto no pedido ao Gemini [HU-22, RF21] (pedido do Joao em 13/11, ainda NAO implementado):** muda decisoes ja escritas e precisa de aprovacao antes:
+   - RNF01 diz que so o resultado trafega; a foto passaria a sair da API para o Google.
+   - Na cota gratis o Google pode usar o conteudo; foto real pode ter rosto, placa ou fachada (RNF04, LGPD).
+   - Custo: imagem gasta bem mais tokens; a cota gratis acaba mais rapido.
+   - Ideia a decidir: a rota /assistente/descricao recebe a foto em memoria, junto com o resultado do /analisar, repassa ao Gemini e descarta, sem salvar; app avisa o cidadao e pede consentimento.
+3. **Modelo do Gemini:** o 3.8 esta instavel (503); decidir se o 3.5 vira o principal na demo.
+4. **Isaac:** confirmar o formato de trechos e locais (INTEGRACAO.md secoes 5 a 7) e o endereco do app (CORS).
+5. **VPS [HU-17]:** escolher provedor e subir a API; sem ela o app da demo nao acha a API.
+6. **Retreino v3** com fotos de calcadas do Rio; citar as fontes das fotos de teste 2 a 5.
+7. **Caio:** ESP32 assinando o MQTT (Etapa 4) e teste de ponta a ponta com video.
+8. **Doc de LGPD:** registrar que, na cota gratis, o Google pode usar as conversas do assistente.
+9. README com a ficha da CitizenTech, relatorio, matematica, pitch e programa Python da disciplina de Logica (aguardando resposta do Prof. Caina).
 
 ## Estado em 12/11/2026 (fim do dia)
 
@@ -15,11 +33,11 @@ Proximos passos (13/11 em diante):
 2. Joao: mandar ao Prof. Caina a duvida sobre o programa Python (a API conta para a disciplina?). Ate a resposta, nada de programa de terminal.
 3. Equipe: 30 a 50 fotos de calcadas com buraco e 15 a 20 sem buraco (sem rostos e placas); separar 10 so para teste. Rotular no Roboflow e retreinar o v3 partindo do v2, com as negativas.
 4. Teste de ponta a ponta com video: foto, API, LED vermelho no Wokwi, field6 = 5 no ThingSpeak.
-5. Equipe decide o provedor da LLM (RNF09); depois, rota do assistente na API (RF20, RF21, RN06, RN07).
+5. Feito em 13/11: assistente com Gemini Flash (/assistente/trajeto e /assistente/descricao) e trilha (GET /trilha), testados com Gemini falso e com o Gemini real (gemini-3.8-flash, reserva gemini-3.5-flash). Chave no visao/api/.env (fora do git). Falta: Isaac confirmar o formato (INTEGRACAO.md secoes 5 e 6).
 6. API numa VPS (HU-17) para o app do Isaac.
 7. README com a ficha da CitizenTech na raiz do repo; relatorio, matematica e pitch.
 
-Pendencias de decisao: provedor da LLM, provedor da VPS, modo chuva, formato dos banheiros, Perigo do calor em 41 ou 39 C, perguntas ao professor de Edge, fontes das fotos de teste 2 a 5, divergencias do INTEGRACAO.md (Flask x FastAPI, horario na mensagem MQTT).
+Pendencias de decisao: provedor da VPS, modo chuva, formato dos banheiros, Perigo do calor em 41 ou 39 C, perguntas ao professor de Edge, fontes das fotos de teste 2 a 5, divergencias do INTEGRACAO.md (Flask x FastAPI, horario na mensagem MQTT).
 
 Responsavel: Joao. Prazo da GS: 19/11/2026, 23h55.
 
@@ -65,7 +83,7 @@ Correcao aplicada no v2 (aprovada 12/11): 38 fotos de calcadas com desenhos escu
 
 ## Proximos passos
 1. Feito em 12/11: v2 testado e adotado (6 de 6). Pendente: citar a fonte das fotos de teste 2 a 5.
-2. **Assistente LLM ajuda a descrever o report [RF21, HU-22, RN07]:** provedor **NAO definido** (RNF09: API pronta ou modelo aberto na VPS; Claude, GPT e Gemini em aberto). Recebe so rotulo, local e texto do cidadao, nunca a foto. Precisa de chave de API (guardar em `.env`, nunca no codigo).
+2. **Assistente LLM ajuda a descrever o report [RF21, HU-22, RN07]:** provedor **Gemini Flash** (RNF09, decisao do Joao em 13/11/2026). Recebe so rotulo, local e texto do cidadao, nunca a foto. Precisa de chave de API (guardar em `.env`, nunca no codigo).
 2b. **Imagens negativas (usadas no v2):** 38 fotos de calcada portuguesa sem buraco do Wikimedia em `treino/negativas.zip` (fontes em `treino/fontes_negativas.md`). Entram pela etapa 5b do notebook, sem rotulo.
 3. **Retreino com calcadas do Rio:** equipe tira 50 a 100 fotos (13/11), fork do dataset do KugaN no Roboflow e rotula com a classe `pothole` (14/11), retreino partindo do `buracos.pt` v2 (15/11), mantendo a etapa 5b das negativas. Repetir as 6 fotos de teste (nao colocar no treino).
 4. **MQTT no ESP32 (Wokwi):** assinar `celia/poste01/camera` e usar o resultado no status [HU-07, RF10, RN02]. Lado da API pronto.
