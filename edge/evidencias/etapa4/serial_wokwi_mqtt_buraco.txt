@@ -1,0 +1,48 @@
+# Wokwi, 13/11/2026, código da Etapa 4 (recepção da câmera por MQTT), no navegador embutido do app do Claude.
+# Arquivos no Wokwi conferidos por SHA-256 (iguais aos da pasta): sketch.ino e05265bf4e09,
+# celia_logica.h 414de7b8c4d1, diagram.json 2e53329e65e3, libraries.txt 92f59f552633 (com PubSubClient).
+# Chave do ThingSpeak: a de exemplo (como no GitHub). Broker: broker.hivemq.com:1883, tópico celia/poste01/camera.
+# As mensagens foram publicadas no broker real a partir da própria página, por WebSocket
+# (wss://broker.hivemq.com:8884/mqtt), com QoS 0 e sem retain:
+#   ~t=20s "buraco"  ·  ~t=62s "livre"  ·  ~t=66s "obstaculo"
+# O que mostra:
+# - compila com o PubSubClient; o MQTT conecta e assina o tópico; nenhuma mensagem antiga chegou na inscrição;
+# - "buraco" -> EVITE na hora, motivo 5, LED vermelho (o Wokwi mostrou ledRed=1, ledGreen=0);
+# - "livre" durante o buraco não muda nada; "obstaculo" (mensagem que não vale mais) é ignorada;
+# - 60 s depois (modo demonstração) o aviso vence e volta a regra dos sensores: ACESSIVEL, LED verde;
+# - as leituras continuam a cada 5 s o tempo todo; sobra de pilha da tarefa de rede: 5792 bytes de 8 KB
+#   (sem envio HTTP real nesta rodada, porque a chave é a de exemplo).
+C.E.L.I.A. - modulo Edge iniciado
+Confirmacao da calcada: 15 s (modo demonstracao)
+Conectando ao Wi-Fi Wokwi-GUEST
+t=3s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+Tarefa de rede ligada: envio ao ThingSpeak a cada 20 s e camera por MQTT.
+Wi-Fi conectado.
+MQTT conectado: ouvindo a camera em celia/poste01/camera.
+t=9s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=14s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+t=19s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+Camera: buraco recebido.
+Camera: trecho em EVITE por 60 s (motivo buraco).
+t=21s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 2 EVITE | motivo 5 buraco
+ThingSpeak: cole a Write API Key no sketch para enviar.
+Tarefa de rede: menor sobra de pilha ate agora: 5792 bytes
+t=26s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 2 EVITE | motivo 5 buraco
+t=31s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 2 EVITE | motivo 5 buraco
+t=36s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 2 EVITE | motivo 5 buraco
+t=41s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 2 EVITE | motivo 5 buraco
+ThingSpeak: cole a Write API Key no sketch para enviar.
+t=46s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 2 EVITE | motivo 5 buraco
+t=51s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 2 EVITE | motivo 5 buraco
+t=56s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 2 EVITE | motivo 5 buraco
+t=61s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 2 EVITE | motivo 5 buraco
+Camera: livre (nao muda nada).
+ThingSpeak: cole a Write API Key no sketch para enviar.
+t=66s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 2 EVITE | motivo 5 buraco
+Camera: mensagem desconhecida, ignorada.
+t=71s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 2 EVITE | motivo 5 buraco
+t=76s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 2 EVITE | motivo 5 buraco
+Camera: o aviso de buraco venceu. Volta a valer a regra dos sensores.
+t=81s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+ThingSpeak: cole a Write API Key no sketch para enviar.
+t=86s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum

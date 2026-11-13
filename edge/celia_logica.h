@@ -37,7 +37,8 @@ const int MOTIVO_NENHUM  = 0;
 const int MOTIVO_CALCADA = 1;
 const int MOTIVO_CALOR   = 2;
 const int MOTIVO_AMBOS   = 3;
-// 4 (veículo) e 5 (buraco) chegam da câmera na Etapa 4.
+const int MOTIVO_BURACO  = 5;  // buraco visto pela câmera (Etapa 4)
+// O 4 (veículo) foi retirado pela equipe em 12/11: o modelo marcava carro estacionado.
 
 // ---------- HC-SR04: tempo do eco -> distância ----------
 // O som vai até o obstáculo e volta; o tempo do eco (ida e volta) é proporcional à
@@ -137,6 +138,26 @@ inline uint32_t msParaConfirmar(const Confirmador &c, uint32_t agoraMs, uint32_t
   return tempoConfirmacaoMs - passou;
 }
 
+// ---------- Câmera (Etapa 4) ----------
+// A foto de um usuário vai para a API de visão, que avisa por MQTT "livre" ou "buraco".
+// Um "buraco" vale por um tempo (10 min na documentação, ainda em proposta). Enquanto
+// vale, o trecho fica em EVITE com motivo 5, qualquer que seja a calçada e o calor.
+// Um "livre" não muda nada: vale a regra dos sensores (e não apaga um buraco que ainda vale).
+
+// O aviso de buraco ainda vale? "desdeMs" é quando ele chegou.
+// Continua certo quando millis() volta a zero, como no confirmador.
+inline bool buracoValendo(bool recebeuBuraco, uint32_t desdeMs, uint32_t agoraMs, uint32_t validadeMs) {
+  return recebeuBuraco && (agoraMs - desdeMs < validadeMs);
+}
+
+// Status e motivo finais, juntando os sensores com a câmera.
+inline int statusComCamera(int statusSensores, bool buraco) {
+  return buraco ? STATUS_EVITE : statusSensores;
+}
+inline int motivoComCamera(int motivoSensores, bool buraco) {
+  return buraco ? MOTIVO_BURACO : motivoSensores;
+}
+
 // ---------- Textos para o OLED e o Serial (sem acento: a fonte do OLED não tem) ----------
 inline const char* nomeStatus(int status) {
   if (status == STATUS_ACESSIVEL) return "ACESSIVEL";
@@ -148,6 +169,7 @@ inline const char* nomeMotivo(int motivo) {
   if (motivo == MOTIVO_CALCADA) return "calcada";
   if (motivo == MOTIVO_CALOR) return "calor";
   if (motivo == MOTIVO_AMBOS) return "calcada+calor";
+  if (motivo == MOTIVO_BURACO) return "buraco";
   return "nenhum";
 }
 

@@ -34,8 +34,9 @@ A regra usa **120 cm** para a faixa livre e **90 cm** como mínimo para a faixa 
 ## O que já foi validado
 
 - **Circuito e regras locais.** A simulação com leitura de 5 s e confirmação de 15 s registrou estreitamento, alerta por calor, bloqueio e liberação. [Evidências da Etapa 1](edge/evidencias/LEIA-ME.md)
-- **Telemetria.** A primeira versão registrou 11 envios reais no canal público. Uma revisão intermediária confirmou no Wokwi que o poste continuava lendo enquanto a tarefa de rede fazia pedidos HTTP. Na versão atual, a equipe reportou **97 verificações da lógica e 56 do sketch**, todas passando. Falta validar no Wokwi um envio aceito com **50 cm confirmados, LED vermelho e `field5=2`**, e registrar a folga de pilha da tarefa de rede. [Evidências da Etapa 2](edge/evidencias/etapa2/LEIA-ME.md)
-- **Próximas etapas.** Detecção de buracos em fotos com YOLO, integração via MQTT e consumo dos alertas pelo app.
+- **Telemetria.** A primeira versão registrou 11 envios reais no canal público. Uma revisão intermediária confirmou no Wokwi que o poste continuava lendo enquanto a tarefa de rede fazia pedidos HTTP. Em 13/11, a rodada com a chave real gravou os registros 12 a 18, inclusive um envio com **50 cm confirmados, LED vermelho e `field5=2`**. A tarefa de rede ficou com 5588 bytes de pilha sobrando, de 8192. [Evidências da Etapa 2](edge/evidencias/etapa2/LEIA-ME.md)
+- **Câmera por MQTT (Etapa 4, lado do poste).** No Wokwi, com o broker público real, um `buraco` publicado no tópico `celia/poste01/camera` deixou o trecho em EVITE (motivo 5) na hora, `livre` não mudou nada, uma mensagem desconhecida foi ignorada e o aviso venceu depois do tempo de validade. Com a chave real, o canal recebeu `field5=2` e `field6=5` enquanto o buraco valia. [Evidências da Etapa 4](edge/evidencias/etapa4/LEIA-ME.md)
+- **Próximas etapas.** Revisão do Codex da Etapa 4, respostas do João sobre a API de visão e consumo dos alertas pelo app.
 
 ## Código e testes
 

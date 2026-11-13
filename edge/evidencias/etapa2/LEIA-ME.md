@@ -67,7 +67,7 @@ Com o DHT22 em 80 °C e 100% de umidade, o índice de calor foi a 708,7 °C, e c
 | [médio] O guia mandava salvar a chave no projeto público do Wokwi | A chave entra só enquanto a simulação roda, sem SAVE. Se ficar salva, gere uma nova chave | `THINGSPEAK.md` e `ROTEIRO_DEMO.md` atualizados. O aluno tirou a chave do projeto |
 | [leve] O teste não cobria `begin()` falhando, HTTP diferente de 200 e horários do pedido lento | Teste com horários de cada leitura e de cada pedido, `begin()` falhando e HTTP 400 | 45 verificações no teste do sketch. Com 13 erros plantados de propósito, os testes pegaram os 13 |
 | [leve] O guia dava 50 °C como limite único da fórmula | O texto passou a citar o aviso do NWS e deixa com a equipe a decisão sobre não enviar o field3 fora da faixa | `THINGSPEAK.md` e `AGENTS.md` (pendência da equipe) |
-| [leve] Intervalo mínimo e evidência de 50 cm | Menor intervalo de 20 s escrito no texto acima. A rodada com 50 cm fica para a revalidação no Wokwi | Pendente: rodada do aluno com o código novo |
+| [leve] Intervalo mínimo e evidência de 50 cm | Menor intervalo de 20 s escrito no texto acima. A rodada com 50 cm fica para a revalidação no Wokwi | Feito em 13/11: registro 18 com 50 cm, `field5=2` (veja a seção final) |
 
 O código novo **compilou e rodou no Wokwi** do navegador embutido, com os 4 arquivos idênticos aos da pasta (conferidos por SHA-256: `sketch.ino` a5533a85dc8a). Desta vez, o Wi-Fi do Wokwi conectou também nesse navegador.
 
@@ -82,7 +82,7 @@ O código novo **compilou e rodou no Wokwi** do navegador embutido, com os 4 arq
 |---|---|---|
 | [médio] Se `xQueueCreate()` falhasse, o envio passava uma fila nula ao FreeRTOS e podia derrubar o poste. Se `xTaskCreate()` falhasse, o envio parava sem aviso | `iniciarEnvio()` confere os dois retornos, avisa no serial e segue sem envio. `guardarParaEnvio()` não usa fila nula | Teste com a fila falhando e com a tarefa falhando: aviso no serial, nenhum envio, e sensores, OLED e LED continuam. Sem essas proteções, o teste quebra, como o ESP32 quebraria |
 | [médio] O guia prometia o field5 igual ao LED no momento do envio | O guia agora diz que cada registro é a leitura capturada antes do envio, e que o horário do ThingSpeak é o da gravação | Teste: o calor sobe durante um pedido lento. O LED fica amarelo antes de o registro lento terminar, esse registro leva status 0 e o seguinte leva status 1 |
-| [leve] A pilha da tarefa não era medida | A tarefa mede a sobra com `uxTaskGetStackHighWaterMark` e avisa no serial quando ela diminui | Teste: a mensagem aparece. O valor real sai na rodada do aluno no Wokwi |
+| [leve] A pilha da tarefa não era medida | A tarefa mede a sobra com `uxTaskGetStackHighWaterMark` e avisa no serial quando ela diminui | Teste: a mensagem aparece. Valor real em 13/11: 5588 bytes sobrando, de 8192 |
 | [leve] `WiFi.reconnect()` a cada tentativa podia atrapalhar a reconexão automática | O sketch só força a reconexão depois de 1 min sem Wi-Fi, no máximo uma vez por minuto | Teste: com 25 s sem Wi-Fi, nenhuma reconexão forçada; com 65 s, exatamente uma. Derrubar o Wi-Fi do Wokwi de propósito não é possível no simulador, então isso fica coberto só pelo teste |
 
 Teste do sketch: **55 verificações**. Com 18 erros plantados de propósito, os testes pegaram os 18.
@@ -97,3 +97,7 @@ Falta a rodada do aluno com a chave real e o código novo:
 - registros novos no canal;
 - o passo de 50 cm (LED vermelho e field5 = 2);
 - o valor da sobra de pilha depois de um envio aceito.
+
+## Rodada final com a chave real (13/11/2026)
+
+A rodada que faltava foi feita com o código da Etapa 4, que inclui todo o envio da Etapa 2: registros 12 a 18 no canal, um envio aceito com **50 cm confirmados, LED vermelho e `field5=2`** (registro 18) e a **sobra de pilha de 5588 bytes** depois de envios HTTP reais. Intervalos de 22 a 23 s. O serial, o JSON do canal e a conferência estão em `../etapa4/` (`serial_wokwi_chave_real.txt`, `canal_3577155_registros_12a18.json` e `LEIA-ME.md`).

@@ -213,12 +213,38 @@ int main() {
   // os valores de perigo do roteiro continuam em perigo se a equipe trocar o limite para 39 °C
   confere(indiceCalorDHTesp(38, 50) >= 41 && indiceCalorDHTesp(32, 50) < 39, "roteiro funciona com limite de 39 ou 41 °C");
 
+  // 6b. Câmera (Etapa 4): buraco deixa em EVITE com motivo 5 enquanto vale; depois, voltam os sensores
+  {
+    const uint32_t VALIDADE = 600000;  // 10 min
+    confere(!buracoValendo(false, 0, 1000, VALIDADE), "sem aviso de buraco: nao vale");
+    confere(buracoValendo(true, 5000, 5000, VALIDADE), "buraco acabou de chegar: vale");
+    confere(buracoValendo(true, 5000, 5000 + VALIDADE - 1, VALIDADE), "buraco 1 ms antes de vencer: ainda vale");
+    confere(!buracoValendo(true, 5000, 5000 + VALIDADE, VALIDADE), "buraco com 10 min completos: venceu");
+    uint32_t perto = 0xFFFFFFFFu - 100000;  // 100 s antes de o millis() voltar a zero
+    uint32_t depois = perto + 300000;        // 5 min depois (já passou do zero)
+    confere(depois < perto, "teste do zero: o relogio voltou a zero de verdade");
+    confere(buracoValendo(true, perto, depois, VALIDADE), "buraco continua valendo quando o millis() volta a zero");
+    confere(!buracoValendo(true, perto, perto + VALIDADE, VALIDADE), "buraco vence na hora certa mesmo passando pelo zero");
+    bool todosOk = true;
+    for (int calcada = 0; calcada <= 2; calcada++)
+      for (int calor = 0; calor <= 2; calor++) {
+        int s = calcularStatus(calcada, calor), m = calcularMotivo(calcada, calor);
+        if (statusComCamera(s, true) != STATUS_EVITE || motivoComCamera(m, true) != MOTIVO_BURACO) todosOk = false;
+        if (statusComCamera(s, false) != s || motivoComCamera(m, false) != m) todosOk = false;
+      }
+    confere(todosOk, "nas 9 combinacoes: com buraco, EVITE e motivo 5; sem buraco, fica a regra dos sensores");
+    confere(MOTIVO_BURACO == 5 && strcmp(nomeMotivo(MOTIVO_BURACO), "buraco") == 0 && strcmp(nomeMotivo(4), "nenhum") == 0,
+            "motivo 5 = buraco; o 4 (veiculo) nao existe mais");
+  }
+
   // 7. Textos do OLED cabem na linha (21 caracteres)
   char linha[40];
   snprintf(linha, sizeof linha, "Faixa %dcm %s", 400, nomeCalcada(CALCADA_BLOQUEADA));
   confere(strlen(linha) <= 21, "linha da faixa cabe no OLED");
   snprintf(linha, sizeof linha, "Motivo: %s", nomeMotivo(MOTIVO_AMBOS));
   confere(strlen(linha) <= 21, "linha do motivo cabe no OLED");
+  snprintf(linha, sizeof linha, "Buraco (camera) %ds", 600);
+  confere(strlen(linha) <= 21, "linha da contagem do buraco cabe no OLED");
   confere(strlen(nomeStatus(STATUS_ACESSIVEL)) * 12 <= 128, "status grande cabe no OLED");
 
   printf("\n%d verificações passaram, %d falharam.\n", passou, falhou);

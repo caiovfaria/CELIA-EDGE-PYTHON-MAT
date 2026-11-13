@@ -48,7 +48,7 @@ O monitor serial mostra uma linha por leitura (`t=...s | T ... | faixa ... | STA
 
 - **LED apagado:** confira se o LED RGB está como catodo comum (`"common": "cathode"` no `diagram.json`).
 - **OLED em branco:** confira se o endereço é `0x3C` e se DATA está no D21 e CLK no D22.
-- **OLED com "SEM DADOS" e LED apagado na partida:** algum sensor ainda não respondeu. É o comportamento esperado: sem leitura, o poste não decide (na dúvida, não fica verde).
+- **OLED com "SEM DADOS" e LED apagado na partida:** algum sensor ainda não respondeu. É o comportamento esperado: sem leitura, o poste não decide (na dúvida, não fica verde). Se a câmera avisar um buraco nessa hora, o OLED mostra `EVITE` e `Motivo: buraco` e o LED fica vermelho: o buraco não depende dos sensores.
 - **"Aviso: falha HC-SR04" ou "Aviso: falha DHT22" na linha de cima:** o sensor falhou na última leitura e o OLED mostra o último valor válido. Se a calçada estava mudando, a contagem recomeça na próxima leitura válida.
 
 ## Etapa 2: dados no ThingSpeak
@@ -61,7 +61,7 @@ Antes, cole a Write API Key no `sketch.ino` do Wokwi, como explica o `THINGSPEAK
    - field3 (índice de calor) sobe nos passos 2, 3 e 5;
    - field4 (distância) cai nos passos 4 e 6;
    - field5 (status) acompanha a cor do LED: 0 verde, 1 amarelo, 2 vermelho. Cada envio leva a última leitura antes dele, então a mudança aparece no envio seguinte;
-   - field6 (motivo) mostra 1 (calçada), 2 (calor) ou 3 (os dois).
+   - field6 (motivo) mostra 1 (calçada), 2 (calor), 3 (os dois) ou 5 (buraco visto pela câmera).
 4. **Sem internet não trava:** o envio roda numa tarefa separada. O poste continua decidindo e mostrando no OLED e no LED, com uma leitura a cada 5 s. O serial avisa `sem Wi-Fi, envio pulado` e tenta reconectar no próximo envio.
 5. Quando terminar, volte a linha da chave para `COLE_SUA_CHAVE_AQUI` antes de salvar o projeto.
 
@@ -72,6 +72,19 @@ O canal recebe no máximo um envio a cada 15 s. Não rode o mesmo projeto em dua
 1. Monitor serial com `Wi-Fi conectado.` e `ThingSpeak: registro ... gravado`
 2. Página do canal com os gráficos de índice de calor, distância e status mudando
 3. Wokwi com o LED vermelho e, ao lado, o gráfico do field5 em 2 no mesmo momento
+
+## Etapa 4: buraco visto pela câmera (MQTT)
+
+O poste escuta o tópico `celia/poste01/camera` no `broker.hivemq.com`, numa tarefa só para a câmera (no serial, `Tarefa da camera ligada`). Assim, o aviso de buraco chega mesmo durante um envio lento ao ThingSpeak. Para mostrar sem depender da API de visão, publique a mensagem você mesmo:
+
+1. Com a simulação rodando e o trecho verde, espere aparecer `MQTT conectado: ouvindo a camera` no monitor serial. Espere mais uns 3 s: o que chega logo depois da conexão é ignorado, porque pode ser uma mensagem antiga guardada no broker.
+2. Abra o [cliente web do HiveMQ](https://www.hivemq.com/demos/websocket-client/) e clique em **Connect**, com as opções padrão.
+3. Em **Publish**, escreva o tópico `celia/poste01/camera`, a mensagem `buraco` (minúsculo, sem espaço) e clique em **Publish**. Deixe o **Retain** desmarcado.
+4. Em 1 ou 2 segundos, o LED fica vermelho, o OLED mostra `EVITE`, `Motivo: buraco` e, em cima, `Buraco (camera) 60s` contando. O serial mostra `Camera: buraco recebido.`
+5. Publique `livre`: nada muda (o buraco continua valendo).
+6. Depois de 60 s (modo demonstração; 10 min no valor real), o serial mostra `o aviso de buraco venceu` e o trecho volta à regra dos sensores (verde).
+
+Com a chave do ThingSpeak colada, o envio seguinte leva `field5=2` e `field6=5` enquanto o buraco vale.
 
 ## Bordas da calçada (para conferir no simulador)
 
