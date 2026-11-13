@@ -10,20 +10,42 @@ que o ESP32 no Wokwi assina [HU-07, RF10]. A foto nunca vai para o MQTT [RNF01].
 
 Decisao de 12/11/2026: deteccao de carros e motos removida; a API so detecta buracos.
 
+Desde 13/11/2026 a mesma API tambem serve:
+- a mini trilha de IA (GET /trilha) [HU-19, RF18];
+- o assistente com Gemini Flash (POST /assistente/trajeto e /assistente/descricao)
+  [HU-21, HU-22, RF20, RF21, RN06, RN07]. Ver assistente.py.
+
 Como rodar (dentro de visao/api):
     uvicorn main:app --reload
 Pagina de testes: http://127.0.0.1:8000/docs
 """
 import io
+import json
 import os
+import time
 import uuid
+from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from dotenv import load_dotenv
+
+# Le o arquivo .env (chave do Gemini etc.) antes de qualquer configuracao.
+load_dotenv()
+
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 import paho.mqtt.client as mqtt
 from PIL import Image, UnidentifiedImageError
 from ultralytics import YOLO
+
+from assistente import (
+    AssistenteIndisponivel,
+    DadosGrandesDemais,
+    PedidoDescricao,
+    PedidoTrajeto,
+    responder_trajeto,
+    sugerir_descricao,
+)
 
 # ---------------------------------------------------------------------------
 # Configuracao
@@ -46,6 +68,9 @@ CONFIG = {
     "mqtt_broker": os.getenv("MQTT_BROKER", "broker.hivemq.com"),
     "mqtt_porta": int(os.getenv("MQTT_PORTA", "1883")),
     "mqtt_topico": os.getenv("MQTT_TOPICO", "celia/poste01/camera"),
+    # PROPOSTA: cada IP pode fazer ate 5 perguntas por minuto ao assistente. Protege a cota
+    # gratuita do Gemini (cerca de 5 a 15 por minuto para a chave inteira).
+    "assistente_limite_por_minuto": int(os.getenv("ASSISTENTE_LIMITE_POR_MINUTO", "5")),
 }
 
 # Protege contra "bomba de descompressao": imagem pequena em bytes, gigante em pixels.
@@ -57,6 +82,10 @@ PASTA_MODELOS = os.path.join(os.path.dirname(__file__), "modelos")
 # Modelo: carregado uma vez so, quando a API liga (carregar a cada foto seria lento).
 # ---------------------------------------------------------------------------
 modelo_buracos = YOLO(os.path.join(PASTA_MODELOS, "buracos.pt"))  # treinado pela equipe [HU-06]
+
+# Licoes da mini trilha de IA [HU-19, RF18]: lidas uma vez, quando a API liga.
+with open(os.path.join(os.path.dirname(__file__), "dados", "trilha.json"), encoding="utf-8") as arquivo:
+    TRILHA = json.load(arquivo)
 
 # ---------------------------------------------------------------------------
 # MQTT: a API e quem PUBLICA; o ESP32 e quem ASSINA o topico.
@@ -95,7 +124,7 @@ def publicar_resultado(resultado: str) -> bool:
     return info.rc == mqtt.MQTT_ERR_SUCCESS
 
 
-app = FastAPI(title="C.E.L.I.A. · API de visao", version="0.3.0", lifespan=ciclo_de_vida)
+app = FastAPI(title="C.E.L.I.A. · API", version="0.4.0", lifespan=ciclo_de_vida)
 
 app.add_middleware(
     CORSMiddleware,
@@ -182,3 +211,61 @@ async def analisar(foto: UploadFile = File(...)) -> dict:
         "largura": imagem.width,
         "altura": imagem.height,
     }
+
+
+# ---------------------------------------------------------------------------
+# Mini trilha de IA [HU-19, RF18]
+# ---------------------------------------------------------------------------
+@app.get("/trilha")
+def listar_trilha() -> dict:
+    """Devolve a trilha inteira (titulo e licoes) para o app montar a tela."""
+    return TRILHA
+
+
+@app.get("/trilha/{id_licao}")
+def ver_licao(id_licao: int) -> dict:
+    """Devolve uma licao pelo numero. Responde 404 se ela nao existir."""
+    for licao in TRILHA["licoes"]:
+        if licao["id"] == id_licao:
+            return licao
+    raise HTTPException(404, "Licao nao encontrada.")
+
+
+# ---------------------------------------------------------------------------
+# Assistente de IA com Gemini [HU-21, HU-22, RF20, RF21]
+# ---------------------------------------------------------------------------
+# Horarios dos ultimos pedidos de cada IP. Fica so na memoria: some quando a API reinicia.
+pedidos_por_ip: dict[str, deque] = defaultdict(deque)
+
+
+def checar_limite(ip: str) -> None:
+    """Recusa (429) quem passar do limite de perguntas por minuto ao assistente."""
+    agora = time.monotonic()
+    horarios = pedidos_por_ip[ip]
+    while horarios and agora - horarios[0] > 60:  # descarta pedidos com mais de 1 minuto
+        horarios.popleft()
+    if len(horarios) >= CONFIG["assistente_limite_por_minuto"]:
+        raise HTTPException(429, "Muitas perguntas seguidas. Espere um minuto.")
+    horarios.append(agora)
+
+
+@app.post("/assistente/trajeto")
+def assistente_trajeto(pedido: PedidoTrajeto, request: Request) -> dict:
+    """Responde perguntas sobre o caminho usando so os trechos e locais enviados [RF20, RN06]."""
+    checar_limite(request.client.host)
+    try:
+        return responder_trajeto(pedido)
+    except DadosGrandesDemais as erro:
+        raise HTTPException(413, str(erro))
+    except AssistenteIndisponivel as erro:
+        raise HTTPException(503, str(erro))
+
+
+@app.post("/assistente/descricao")
+def assistente_descricao(pedido: PedidoDescricao, request: Request) -> dict:
+    """Sugere o texto do report; o cidadao revisa antes de enviar [RF21, RN07]."""
+    checar_limite(request.client.host)
+    try:
+        return sugerir_descricao(pedido)
+    except AssistenteIndisponivel as erro:
+        raise HTTPException(503, str(erro))

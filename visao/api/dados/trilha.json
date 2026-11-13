@@ -1,0 +1,66 @@
+{
+  "titulo": "Mini trilha de IA para o trabalho",
+  "observacao": "Rascunho escrito com apoio de IA em 13/11/2026, para a equipe revisar [HU-19, RF18, RNF08].",
+  "licoes": [
+    {
+      "id": 1,
+      "titulo": "O que é inteligência artificial",
+      "duracao_minutos": 3,
+      "paragrafos": [
+        "Inteligência artificial, ou IA, é um programa que aprende com muitos exemplos.",
+        "Uma IA de texto leu muitos textos e aprendeu a escrever respostas. Uma IA de imagem viu muitas fotos e aprendeu a reconhecer coisas nelas.",
+        "A IA não pensa como uma pessoa. Ela pode errar e às vezes inventa informações com muita confiança."
+      ],
+      "exemplo_no_trabalho": "A própria C.E.L.I.A. usa uma IA que viu mais de mil fotos de buracos e aprendeu a achar buracos em fotos novas de calçadas.",
+      "pratique": "Pense em uma tarefa repetitiva do seu trabalho. Ela poderia ser feita com ajuda de uma IA?"
+    },
+    {
+      "id": 2,
+      "titulo": "Como pedir bem para a IA",
+      "duracao_minutos": 4,
+      "paragrafos": [
+        "O pedido que você faz para a IA se chama prompt.",
+        "Um bom pedido diz quem você é, o que precisa e como quer a resposta.",
+        "Se a resposta não ficou boa, peça de novo explicando o que faltou. Conversar em etapas costuma dar resultado melhor."
+      ],
+      "exemplo_no_trabalho": "Em vez de \"faça um e-mail\", peça: \"Sou assistente administrativo. Escreva um e-mail curto e educado para avisar a equipe que a reunião mudou para quinta às 10h.\"",
+      "pratique": "Reescreva o pedido \"resuma isso\" dizendo para quem é o resumo e qual o tamanho."
+    },
+    {
+      "id": 3,
+      "titulo": "IA para escrever e revisar textos",
+      "duracao_minutos": 4,
+      "paragrafos": [
+        "A IA ajuda a começar um texto, corrigir erros e deixar a escrita mais clara.",
+        "Ela também resume documentos longos e transforma anotações soltas em um texto organizado.",
+        "Você continua sendo o autor: leia tudo antes de enviar e ajuste o que não estiver certo."
+      ],
+      "exemplo_no_trabalho": "Cole as anotações de uma reunião e peça: \"Organize estas anotações em uma lista de tarefas com o responsável de cada uma.\"",
+      "pratique": "Escreva uma frase com um erro de propósito e peça para a IA corrigir e explicar o erro."
+    },
+    {
+      "id": 4,
+      "titulo": "IA a favor da acessibilidade",
+      "duracao_minutos": 4,
+      "paragrafos": [
+        "Muitos celulares e computadores já trazem recursos de IA que ajudam pessoas com deficiência.",
+        "O ditado transforma sua fala em texto. A leitura em voz alta lê textos da tela para você.",
+        "Alguns aplicativos descrevem fotos e documentos para quem não enxerga e geram legendas automáticas em vídeos e reuniões."
+      ],
+      "exemplo_no_trabalho": "Em uma reunião por vídeo, ative a legenda automática para acompanhar o que cada pessoa fala.",
+      "pratique": "Procure nas configurações de acessibilidade do seu celular os recursos de ditado e de leitura da tela."
+    },
+    {
+      "id": 5,
+      "titulo": "Cuidados ao usar IA",
+      "duracao_minutos": 3,
+      "paragrafos": [
+        "Não coloque na IA dados pessoais seus ou de outras pessoas, como CPF, endereço, telefone ou informações de saúde.",
+        "Confira as respostas importantes em uma fonte confiável, porque a IA pode errar ou inventar.",
+        "Siga as regras da sua empresa sobre quais ferramentas de IA podem ser usadas no trabalho."
+      ],
+      "exemplo_no_trabalho": "Antes de pedir um resumo de uma planilha de clientes, troque os nomes e documentos por códigos.",
+      "pratique": "Releia um pedido que você faria para a IA e confira se ele tem algum dado pessoal."
+    }
+  ]
+}
