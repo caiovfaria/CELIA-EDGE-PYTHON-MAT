@@ -1,0 +1,23 @@
+# Validação da Etapa 4 no Wokwi com Wi-Fi (13/11/2026)
+# Arquivos do commit 8de554dd2c2039f67e36f14fe9d597e573687cfc carregados no editor do Wokwi sem salvar o projeto.
+# Chave de exemplo. A rodada não gravou no ThingSpeak.
+# Mensagem de teste: buraco, QoS 1, retain=false, publicada após a janela de 3 s. O broker retornou PUBACK.
+# OLED EVITE com motivo buraco e LED vermelho observados na simulação.
+# Trechos do monitor serial, na ordem observada:
+
+Conectando ao Wi-Fi Wokwi-GUEST
+t=3s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+Wi-Fi conectado.
+Tarefa de rede ligada: envio ao ThingSpeak a cada 20 s.
+Tarefa da camera ligada: ouvindo a API de visao por MQTT.
+MQTT conectado: ouvindo a camera em celia/poste01/camera.
+Tarefa da camera: menor sobra de pilha ate agora: 5864 bytes
+t=14s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
+Camera: buraco recebido.
+Camera: trecho em EVITE por 60 s (motivo buraco).
+t=17s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 2 EVITE | motivo 5 buraco
+ThingSpeak: cole a Write API Key no sketch para enviar.
+Tarefa de rede: menor sobra de pilha ate agora: 6276 bytes
+t=73s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 2 EVITE | motivo 5 buraco
+Camera: o aviso de buraco venceu. Volta a valer a regra dos sensores.
+t=77s | T 26.0C U 50% IC 26.0C (normal) | faixa 200cm lida livre / vale livre | STATUS 0 ACESSIVEL | motivo 0 nenhum
