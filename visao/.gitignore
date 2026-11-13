@@ -1,0 +1,13 @@
+# Ambiente virtual e caches
+.venv/
+__pycache__/
+
+# Pesos baixados automaticamente (o buracos.pt da equipe FICA no repositorio)
+api/yolov8n.pt
+
+# Segredos (chave do LLM, broker MQTT)
+.env
+
+# Fotos negativas baixadas do Wikimedia (recriar com treino/baixar_negativas.py; fontes em treino/fontes_negativas.md)
+treino/negativas/
+treino/negativas.zip
