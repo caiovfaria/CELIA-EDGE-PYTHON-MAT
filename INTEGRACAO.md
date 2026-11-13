@@ -11,7 +11,7 @@ Atualizado em 12/11/2026.
 | `edge/` | ESP32 no Wokwi, ThingSpeak | Caio |
 | `visao/` | API de visão (FastAPI), modelo de buracos, MQTT | João |
 | `python/` | Programa da disciplina de Lógica (lê o ThingSpeak) | João |
-| `app/` | Front em React | a definir |
+| `app/` | Front em React e interações (Web Dev) | Isaac |
 
 ## 1. API de visão para o ESP32 (MQTT) [HU-07, RF10, RN02]
 
