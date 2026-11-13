@@ -1,5 +1,26 @@
 # Status da visao computacional (atualizado em 12/11/2026)
 
+## Estado em 12/11/2026 (fim do dia)
+
+Responsaveis: Caio (edge/ e Wokwi), Isaac (app React e Web Dev), Joao (visao/, API, MQTT e programa Python da disciplina de Logica). Sem dono: matematica, relatorio, pitch, RF13 (reports a partir dos postes).
+
+Feito hoje:
+- Modelo v2 adotado (6 de 6 nas fotos de calcada); v1 guardado.
+- API FastAPI com MQTT (HiveMQ, celia/poste01/camera, qos 1, sem retain), testada de ponta a ponta.
+- Deteccao de carros e motos removida; field6 = 4 removido.
+- PR #1 no repo do Caio (https://github.com/caiovfaria/GS-C.E.L.I.A.-EDGE/pull/1) com visao/ e INTEGRACAO.md. Pode ser mesclado (so adiciona arquivos).
+
+Proximos passos (13/11 em diante):
+1. Caio: merge do PR #1, responder as divergencias do INTEGRACAO.md e Etapa 4 (ESP32 assina o MQTT).
+2. Joao: mandar ao Prof. Caina a duvida sobre o programa Python (a API conta para a disciplina?). Ate a resposta, nada de programa de terminal.
+3. Equipe: 30 a 50 fotos de calcadas com buraco e 15 a 20 sem buraco (sem rostos e placas); separar 10 so para teste. Rotular no Roboflow e retreinar o v3 partindo do v2, com as negativas.
+4. Teste de ponta a ponta com video: foto, API, LED vermelho no Wokwi, field6 = 5 no ThingSpeak.
+5. Equipe decide o provedor da LLM (RNF09); depois, rota do assistente na API (RF20, RF21, RN06, RN07).
+6. API numa VPS (HU-17) para o app do Isaac.
+7. README com a ficha da CitizenTech na raiz do repo; relatorio, matematica e pitch.
+
+Pendencias de decisao: provedor da LLM, provedor da VPS, modo chuva, formato dos banheiros, Perigo do calor em 41 ou 39 C, perguntas ao professor de Edge, fontes das fotos de teste 2 a 5, divergencias do INTEGRACAO.md (Flask x FastAPI, horario na mensagem MQTT).
+
 Responsavel: Joao. Prazo da GS: 19/11/2026, 23h55.
 
 ## Pronto
