@@ -65,6 +65,7 @@ Normal abaixo de 32 °C, Atenção a partir de 32 °C, Perigo a partir de 41 °C
 - `POST /analisar`, campo de formulário `foto` (JPG, PNG ou WEBP; limite de 5 MB em proposta).
 - Resposta: `resultado` (`livre` ou `buraco`), `caixas_buracos` (x1, y1, x2, y2, confianca), `mqtt_enviado`, `largura`, `altura`.
 - Local: http://127.0.0.1:8000 (página de testes em `/docs`). Endereço público quando a API for para a VPS (HU-17).
+- `GET /` (14/11/2026): `status`, `projeto` e `modelo_pronto`. Logo que liga, a API aquece o modelo em segundo plano (a primeira análise passava de 1 minuto). Enquanto `modelo_pronto` for `false`, o app mostra "Preparando a IA" e pergunta de novo a cada 2 s.
 
 ## 5. App para a API: mini trilha de IA (HTTP) [HU-19, RF18, RNF08]
 
@@ -104,6 +105,8 @@ Provedor Gemini Flash (decisão do João, 13/11/2026). RN06 e RN07 aprovadas (13
 
 - Resposta: `descricao_sugerida` e `revisar_antes_de_enviar: true`.
 - RN07: o app mostra o texto num campo editável e só envia o report depois que o cidadão confirma. A API não envia nada à prefeitura e nunca recebe a foto.
+
+Modelos (14/11/2026): a API tenta `gemini-3.8-flash`, depois `gemini-3.5-flash` e por último `gemini-3.5-flash-lite` (até 20 s cada). A mensagem do 503 diz o motivo da última falha (sobrecarga, cota ou demora). O app tenta de novo sozinho até 3 vezes (espera 3, 6 e 12 s) e depois oferece "Tentar de novo".
 
 Erros: 422 (dados fora do formato), 413 (trechos e locais somando mais de 8.000 caracteres, PROPOSTA: mandar só os itens perto da rota), 429 (mais de 5 perguntas por minuto do mesmo IP, PROPOSTA), 503 (Gemini sem chave, sem cota ou fora do ar; o app mostra a mensagem do campo `detail`).
 

@@ -35,6 +35,9 @@ CONFIG_LLM = {
     # Plano B: se o modelo principal estiver sobrecarregado (503) ou sem cota (429), tenta este.
     # Em 13/11/2026 o 3.8 respondeu "alta demanda" e o 3.5 respondeu normalmente.
     "modelo_reserva": os.getenv("GEMINI_MODELO_RESERVA", "gemini-3.5-flash"),
+    # Terceira tentativa (14/11/2026): Flash-Lite gratuito, com cota propria. Testado na chave
+    # da equipe em 14/11, quando o 3.8 e o 3.5 deram 503 ao mesmo tempo.
+    "modelo_reserva_2": os.getenv("GEMINI_MODELO_RESERVA_2", "gemini-3.5-flash-lite"),
     # Temperatura baixa: respostas mais previsiveis e menos "criativas" (bom contra invencao).
     "temperatura": 0.2,
     # PROPOSTA: teto de 8.000 caracteres (cerca de 2.000 tokens) para os dados do app em cada
@@ -193,21 +196,26 @@ def perguntar_gemini(instrucao: str, conteudo: str, formato: type[BaseModel]) ->
         response_mime_type="application/json",
         response_schema=formato,
     )
-    mensagem_erro = "O Gemini esta fora do ar. Tente de novo em instantes."
-    for modelo in (CONFIG_LLM["modelo"], CONFIG_LLM["modelo_reserva"]):
+    # A mensagem final diz o MOTIVO da ultima falha, para o app mostrar ao cidadao.
+    mensagem_erro = "O Gemini esta sobrecarregado agora (erro 503). Tente de novo em instantes."
+    modelos = (CONFIG_LLM["modelo"], CONFIG_LLM["modelo_reserva"], CONFIG_LLM["modelo_reserva_2"])
+    for modelo in modelos:
         try:
             resposta = obter_cliente().models.generate_content(
                 model=modelo, contents=conteudo, config=config
             )
         except errors.ClientError as erro:  # 4xx: chave invalida, cota esgotada (429), pedido errado
             if erro.code == 429:
-                mensagem_erro = "Cota gratuita do Gemini esgotada. Tente em 1 minuto."
+                mensagem_erro = "Cota gratuita do Gemini esgotada (erro 429). Tente em 1 minuto."
                 continue  # a cota gratis e separada por modelo: vale tentar o reserva
             raise AssistenteIndisponivel(f"O Gemini recusou o pedido (erro {erro.code}).")
-        except errors.ServerError:  # 5xx: sobrecarga ou problema do lado do Google
+        except errors.ServerError as erro:  # 5xx: sobrecarga ou problema do lado do Google
+            mensagem_erro = (
+                f"O Gemini esta sobrecarregado agora (erro {erro.code}). Tente de novo em instantes."
+            )
             continue
         except httpx.TimeoutException:  # passou dos 20 s sem resposta: tenta o reserva
-            mensagem_erro = "O Gemini demorou demais para responder. Tente de novo em instantes."
+            mensagem_erro = "O Gemini demorou demais para responder (mais de 20 s). Tente de novo."
             continue
 
         # parsed vem vazio se a resposta foi bloqueada pelos filtros do Google ou veio incompleta.
