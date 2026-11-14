@@ -91,7 +91,7 @@ Correcao aplicada no v2 (aprovada 12/11): 38 fotos de calcadas com desenhos escu
 
 ## Propostas no codigo ainda NAO aprovadas
 - Limite de upload de 5 MB.
-- Confianca minima 0,25.
+- Confianca minima 0,40 (decisao do Joao, 14/11/2026; ver secao "Experimento de confianca").
 
 ## Como rodar a API
 ```powershell
@@ -111,3 +111,21 @@ cd visao\api
 Terminal 2: rodar a API e enviar uma foto em http://127.0.0.1:8000/docs. O resultado aparece no terminal 1.
 Se faltar pacote: `.venv\Scripts\python -m pip install -r requirements.txt` (agora inclui paho-mqtt).
 Variaveis opcionais: `MQTT_ATIVO=0` desliga o MQTT; `MQTT_BROKER`, `MQTT_PORTA`, `MQTT_TOPICO` trocam o destino.
+
+
+## Experimento de confianca (14/11/2026) [HU-06, RF09]
+
+Sem retreinar. Modelo v2, mesmas 67 imagens de teste do dataset (asfalto), acerto com IoU >= 0,5.
+Script: `treino/experimento_confianca.py`. Pequeno: menos de 5% da foto; medio: 5% a 15%; grande: acima.
+
+| Confianca | Precisao | Recall | F1 | Falsos positivos | Pequenos | Medios | Grandes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 0,25 | 75,1% | 74,7% | 74,9% | 45 | 88/130 | 27/30 | 21/22 |
+| 0,30 | 76,4% | 74,7% | 75,6% | 42 | 88/130 | 27/30 | 21/22 |
+| 0,35 | 77,3% | 73,1% | 75,1% | 39 | 85/130 | 27/30 | 21/22 |
+| **0,40** | **80,9%** | 72,0% | **76,2%** | 31 | 83/130 | 27/30 | 21/22 |
+
+**Decisao do Joao (14/11/2026): 0,40.** Melhor F1 e menos alarmes falsos; a perda fica so em 5 buracos pequenos.
+Tambem elimina o falso positivo da `wm_02.jpg` (calcada sem buraco, confianca 0,33).
+Os numeros do treino (85,0% e 69,8%) vem do `val()`, que mede na confianca de melhor F1; aqui cada confianca e fixa.
+Decisao do Joao (14/11/2026): sem retreino (v3 cancelado).

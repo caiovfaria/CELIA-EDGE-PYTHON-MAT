@@ -55,8 +55,10 @@ from assistente import (
 CONFIG = {
     # PROPOSTA: limite de 5 MB por foto (protege a API publica na VPS).
     "tamanho_max_bytes": 5 * 1024 * 1024,
-    # PROPOSTA: confianca minima de 0.25 (padrao do YOLO). Baixar aumenta o recall.
-    "confianca_minima": float(os.getenv("CONFIANCA_MINIMA", "0.25")),
+    # Confianca minima 0.40 (decisao do Joao, 14/11/2026), escolhida pelo experimento
+    # treino/experimento_confianca.py nas 67 imagens de teste: F1 76,2% (contra 74,9% em 0.25),
+    # 14 falsos positivos a menos; perde 5 de 130 buracos pequenos, medios e grandes iguais.
+    "confianca_minima": float(os.getenv("CONFIANCA_MINIMA", "0.40")),
     "tipos_aceitos": {"image/jpeg", "image/png", "image/webp"},
     # Origens que podem chamar a API pelo navegador (app React em desenvolvimento).
     "origens_permitidas": os.getenv(
