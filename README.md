@@ -34,15 +34,15 @@ A regra usa **120 cm** para a faixa livre e **90 cm** como mínimo para a faixa 
 ## O que já foi validado
 
 - **Circuito e regras locais.** A simulação com leitura de 5 s e confirmação de 15 s registrou estreitamento, alerta por calor, bloqueio e liberação. [Evidências da Etapa 1](edge/evidencias/LEIA-ME.md)
-- **Telemetria.** A primeira versão registrou 11 envios reais no canal público. Uma revisão intermediária confirmou no Wokwi que o poste continuava lendo enquanto a tarefa de rede fazia pedidos HTTP. Em 13/11, a rodada com a chave real gravou os registros 12 a 18, inclusive um envio com **50 cm confirmados, LED vermelho e `field5=2`**. A tarefa de rede ficou com 5588 bytes de pilha sobrando, de 8192. [Evidências da Etapa 2](edge/evidencias/etapa2/LEIA-ME.md)
-- **Câmera por MQTT (Etapa 4, lado do poste).** No Wokwi, com o broker público real, um `buraco` publicado no tópico `celia/poste01/camera` deixou o trecho em EVITE (motivo 5) na hora, `livre` não mudou nada, uma mensagem desconhecida foi ignorada e o aviso venceu depois do tempo de validade. Com a chave real, o canal recebeu `field5=2` e `field6=5` enquanto o buraco valia. [Evidências da Etapa 4](edge/evidencias/etapa4/LEIA-ME.md)
-- **Próximas etapas.** Revisão do Codex da Etapa 4, respostas do João sobre a API de visão e consumo dos alertas pelo app.
+- **Telemetria.** A primeira versão registrou 11 envios reais no canal público. Uma revisão intermediária confirmou no Wokwi que o poste continuava lendo enquanto a tarefa de rede fazia pedidos HTTP. Em 13/11, a rodada com a chave real gravou os registros 12 a 18, inclusive um envio com **50 cm confirmados, LED vermelho e `field5=2`**. A tarefa de rede ficou com 5588 bytes de pilha sobrando, de 8192. Em 15/11, mais 21 registros (19 a 39) passaram pelas três faixas, para o programa Python da equipe. [Evidências da Etapa 2](edge/evidencias/etapa2/LEIA-ME.md) · [Leituras de 15/11](edge/evidencias/leituras_15-11/LEIA-ME.md)
+- **Câmera por MQTT (Etapa 4, lado do poste).** No Wokwi, com o broker público real, um `buraco` publicado no tópico `celia/poste01/camera` deixou o trecho em EVITE (motivo 5) na hora, `livre` não mudou nada, uma mensagem desconhecida foi ignorada e o aviso venceu depois do tempo de validade. Com a chave real, o canal recebeu `field5=2` e `field6=5` enquanto o buraco valia. Na versão final, o MQTT roda numa tarefa própria, separada do envio ao ThingSpeak, e foi validado no Wokwi com Wi-Fi em 13/11. [Evidências da Etapa 4](edge/evidencias/etapa4/LEIA-ME.md)
+- **Próximas etapas.** Teste de ponta a ponta (foto → API de visão → MQTT → ESP32 → ThingSpeak, com `field6=5`) e consumo dos alertas pelo app.
 
 ## Código e testes
 
 | Caminho | Conteúdo |
 | --- | --- |
-| [`edge/sketch.ino`](edge/sketch.ino) | Firmware do ESP32 e envio ao ThingSpeak |
+| [`edge/sketch.ino`](edge/sketch.ino) | Firmware do ESP32: sensores, envio ao ThingSpeak e câmera por MQTT |
 | [`edge/celia_logica.h`](edge/celia_logica.h) | Regras de classificação e confirmação |
 | [`edge/diagram.json`](edge/diagram.json) | Circuito no Wokwi |
 | [`tests/`](tests/) | Testes da lógica e do firmware com sensores e rede simulados |

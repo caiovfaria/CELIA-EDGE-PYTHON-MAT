@@ -25,6 +25,7 @@ Mudança combinada com a equipe: o código 4 (veículo) saiu. A API não detecta
 
 | Arquivo | O que mostra |
 |---|---|
+| `serial_wokwi_final_com_wifi.txt` | **Rodada final com Wi-Fi** (13/11, commit `93995f1`): arquivos do commit `8de554d`, broker real, um `buraco` publicado depois da janela de 3 s. O buraco chegou pela tarefa da câmera, o trecho ficou em EVITE com motivo 5 e LED vermelho e voltou a ACESSIVEL depois de 60 s. Menor sobra de pilha: 5864 bytes na câmera e 6276 na rede. Chave de exemplo, sem gravação no ThingSpeak |
 | `serial_wokwi_revisao1_chrome_sem_wifi.txt` | Versão da revisão 1 no Wokwi (Chrome do aluno): compila, liga as duas tarefas e mede a pilha antes de conectar. O Wi-Fi do Wokwi não conectou nesse navegador |
 | `serial_wokwi_chave_real.txt` | **Rodada com a chave real** (13/11, 09h40, versão anterior à revisão 1 do Codex): 7 envios aceitos pelo canal, com `buraco`, `livre`, o aviso vencendo e 50 cm na calçada. Detalhes na seção abaixo |
 | `canal_3577155_registros_12a18.json` | Os registros 12 a 18 como o próprio ThingSpeak devolve (`/channels/3577155/feeds.json`) |
@@ -81,7 +82,7 @@ Parecer: "Etapa 4 pendente para commit pelos achados médios". O Codex não acho
 | [leve] O `strcmp()` aceitava `buraco\0x` | `mensagemIgual()` compara o tamanho e os bytes (`memcmp`) | Cenário 34: `buraco\0x` e `livre\0` ignorados |
 | [leve] O MQTT falso entregava tudo de uma vez e via a queda do Wi-Fi na hora | O falso entrega uma mensagem por `loop()`, como a biblioteca. Depois de uma queda do Wi-Fi, a conexão parece viva mas não entrega nada. Mensagens publicadas com o poste desconectado se perdem. (Nesta revisão, o falso derrubava a conexão depois de 1,5 vez o keepalive. Na revisão 2, isso foi trocado pelas duas fases da biblioteca: veja a tabela abaixo.) | Cenário 41: o Wi-Fi cai por 2 s, o poste fecha a conexão e reconecta, e nada se perde. Cenário 42: veja a revisão 2 |
 
-Rodada da nova versão no Wokwi, no Chrome do aluno (`serial_wokwi_revisao1_chrome_sem_wifi.txt`): ela **compila** e liga as duas tarefas. Sem nenhuma conexão, sobram 6652 bytes de pilha na câmera e 6820 na rede, de 8192. Sem Wi-Fi, o poste segue decidindo e força a reconexão depois de 1 minuto. Nesse Chrome, o Wi-Fi do Wokwi não conectou, então o MQTT na tarefa nova ainda precisa de uma rodada com Wi-Fi. As rodadas com o broker e com a chave real foram feitas com a versão anterior.
+Rodada da nova versão no Wokwi, no Chrome do aluno (`serial_wokwi_revisao1_chrome_sem_wifi.txt`): ela **compila** e liga as duas tarefas. Sem nenhuma conexão, sobram 6652 bytes de pilha na câmera e 6820 na rede, de 8192. Sem Wi-Fi, o poste segue decidindo e força a reconexão depois de 1 minuto. Nesse Chrome, o Wi-Fi do Wokwi não conectou. A rodada com Wi-Fi foi feita depois, em 13/11 (`serial_wokwi_final_com_wifi.txt`). As rodadas com o broker e com a chave real foram feitas com a versão anterior.
 
 ## Revisão 2 do Codex (13/11/2026)
 
@@ -97,6 +98,6 @@ Parecer: "Etapa 4 pendente para commit". O Codex conferiu os 16 arquivos por SHA
 
 ## Ainda falta
 
-- Rodada no Wokwi **com Wi-Fi** da versão da revisão 1: MQTT na tarefa da câmera e sobra de pilha das duas tarefas depois de conectar. A compilação já foi conferida.
-- As respostas do João: `livre` não apaga o buraco e o estado do modelo de buracos. (O `retain=false` já está no contrato de integração, segundo o Codex. O horário dentro da mensagem ficou como melhoria futura.)
-- A revisão 3 do Codex.
+- **Teste de ponta a ponta:** foto → API de visão do João → MQTT → ESP32 no Wokwi → ThingSpeak, com `field6=5` no canal.
+
+Já resolvido: a rodada com Wi-Fi (commit `93995f1`), a revisão 3 do Codex (Etapa 4 aprovada, commit `8de554d`) e as dúvidas com o João. O contrato de integração diz que a API publica sem retain e que `livre` não força nada, e o modelo de buracos é o v2 dele. O horário dentro da mensagem ficou como melhoria futura.
