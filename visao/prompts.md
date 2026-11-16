@@ -115,3 +115,16 @@ Reteste na API (mesmas 6 fotos): v1 4 de 6, v2 6 de 6 (calcadao com desenhos pas
 **Prompt (resumo):** "Liste as pendencias; faca commit e PR com exemplo do hook no INTEGRACAO.md, passo a passo para o Isaac; verifique se nada esta exposto e se esta tudo no .env."
 
 **Resultado:** `INTEGRACAO.md` secao 7 (rodar a API, endereco no `.env` do Vite, funcao `chamarApi`, custom hook `useApi`, foto, trilha, assistente, report com revisao e tabela de erros). `.env.example` completo. Varredura: nenhuma chave do Google (padrao `AIza...`) nos arquivos nem no historico do git; `.env` ignorado pelo `visao/.gitignore`. Pendencias em `STATUS.md`. Pedido de mandar a imagem ao Gemini registrado como pendencia de decisao (conflita com RNF01), nao implementado.
+
+## 15/11/2026 · Câmera do poste (ESP32-CAM): receber, guardar, analisar e reportar [HU-16, HU-23, HU-24, HU-25, RF22, RF23, RF24]
+
+**Ferramenta:** Claude Code
+
+**Prompt (resumo):** "Seguindo os requisitos da GS, estruture fluxo, arquitetura e código para ESP32-CAM, foto, SQLite, YOLO, report e Prefeitura. Passo a passo, sem VPS por enquanto, com túnel da Cloudflare para a placa do Caio alcançar a API."
+
+**Resultado:**
+- `banco.py`: SQLite com as tabelas `capturas` e `reportes` (parâmetros `?` contra SQL injection).
+- `poste.py`: `POST /poste/captura` (chave `X-Chave`, JPEG até 1 MB, nome de poste validado), análise com o YOLO, aviso por MQTT e report do Gemini em segundo plano, no máximo um a cada 10 min por poste (RN09, proposta). Rotas de leitura para o site: `GET /poste/capturas`, `GET /poste/capturas/{id}/foto` e `GET /poste/reportes`.
+- `main.py`: análise numa função com trava (`threading.Lock`), usada pelo aquecimento, pelo `/analisar` e pela câmera; YOLO em outra thread com `run_in_threadpool`.
+- Contrato em `INTEGRACAO.md` seção 8.
+- Testes com `curl` (chave errada, não-JPEG, corpo vazio, poste malicioso, 1,2 MB, livre, buraco, RN09, 6 pedidos simultâneos, report do Gemini gravado) e pelo túnel. A câmera real ainda não foi testada: a placa está com o Caio.
