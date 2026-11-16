@@ -33,18 +33,26 @@ CONFIG = {
     "arquivo_backup": os.path.join(PASTA, "backup.json"),
     "arquivo_historico": os.path.join(PASTA, "historico.json"),
     "arquivo_relatorio": os.path.join(PASTA, "relatorio.csv"),
-    # Cada medida: campo do canal, nivel 0 em "min" e nivel 100 em "max".
+    # Cada medida: campo do canal, faixa de "min" a "max" (min sempre menor que max) e peso.
     # Calor: 32 C e onde a Atencao comeca no ESP32; 41 C e onde comeca o Evite.
-    # Calcada: invertida (quanto MENOR a distancia, maior o risco). 120 cm e calcada livre
+    # Calcada: "invertida" (quanto MENOR a distancia, maior o risco). 120 cm e calcada livre
     # (NBR 9050, faixa livre de 1,20 m); abaixo de 90 cm o ESP32 considera bloqueada.
     "medidas": {
-        "calor": {"campo": "field3", "min": 32.0, "max": 41.0, "peso": 0.5, "unidade": "C"},
-        "calcada": {"campo": "field4", "min": 120.0, "max": 90.0, "peso": 0.5, "unidade": "cm"},
+        "calor": {"campo": "field3", "min": 32.0, "max": 41.0, "peso": 0.5, "unidade": "C",
+                  "invertida": False},
+        "calcada": {"campo": "field4", "min": 90.0, "max": 120.0, "peso": 0.5, "unidade": "cm",
+                    "invertida": True},
     },
     # Faixas do risco (0 a 100). Com pesos 0,5 e 0,5, uma medida sozinha no limite do Evite
     # do ESP32 da risco 50: por isso Evite comeca em 50. Qualquer risco acima de 0 e Atencao.
     "corte_atencao": 0.0,
     "corte_evite": 50.0,
+    # Aviso ao cidadao em cada faixa: os mesmos textos que o app mostra (src/domain/faixas.js).
+    "avisos": {
+        "normal": "Calcada livre e sem calor forte. Boa para cadeira de rodas, andador e bengala.",
+        "atencao": "Da para passar, mas com cuidado. Veja o motivo antes de sair.",
+        "perigo": "Trecho dificil agora. Prefira outro caminho.",
+    },
     # Valores fora disso sao lixo de teste ou falha do sensor (o canal tem registros assim).
     "faixa_valida": {"calor": (-10.0, 60.0), "calcada": (0.0, 400.0)},
 }
@@ -61,7 +69,8 @@ FIM_COR = "\033[0m"
 def validar_config(config: dict) -> None:
     """Confere a configuracao. Dispara ValueError se algo estiver errado.
 
-    Regras: pesos somam 1, min diferente de max e corte do Evite maior que o da Atencao.
+    Regras: pesos somam 1, min menor que max, corte do Evite maior que o da Atencao
+    e um aviso para cada faixa.
     """
     medidas = config["medidas"]
     if len(medidas) < 2:
@@ -72,26 +81,32 @@ def validar_config(config: dict) -> None:
     for nome, m in medidas.items():
         if m["peso"] < 0:
             raise ValueError(f"Peso negativo em {nome}.")
-        if m["min"] == m["max"]:
-            raise ValueError(f"Em {nome}, min e max nao podem ser iguais.")
+        if m["min"] >= m["max"]:
+            raise ValueError(f"Em {nome}, o minimo precisa ser menor que o maximo.")
     if not 0 <= config["corte_atencao"] < config["corte_evite"] <= 100:
         raise ValueError("Cortes invalidos: precisa 0 <= atencao < evite <= 100.")
+    for faixa in FAIXAS:
+        if not config["avisos"].get(faixa):
+            raise ValueError(f"Falta o aviso da faixa {faixa}.")
 
 
-def calcular_nivel(valor: float, minimo: float, maximo: float) -> float:
+def calcular_nivel(valor: float, minimo: float, maximo: float, invertida: bool = False) -> float:
     """Nivel de 0 a 100: nivel = (valor - min) / (max - min) * 100, limitado a 0 e 100.
 
-    Com max menor que min (calcada), a conta ja inverte sozinha: menos cm = nivel maior.
+    invertida=True (calcada): menos espaco e mais risco, entao o nivel vira 100 - nivel.
+    Ex.: calcada com 90 cm -> nivel 100; com 120 cm -> nivel 0.
     """
     nivel = (valor - minimo) / (maximo - minimo) * 100
-    return max(0.0, min(100.0, nivel))
+    nivel = max(0.0, min(100.0, nivel))
+    return 100.0 - nivel if invertida else nivel
 
 
 def calcular_risco(medidas: dict, config: dict) -> float:
     """Risco = peso1 * nivel1 + peso2 * nivel2 (de 0 a 100)."""
     risco = 0.0
     for nome, regra in config["medidas"].items():
-        risco += regra["peso"] * calcular_nivel(medidas[nome], regra["min"], regra["max"])
+        nivel = calcular_nivel(medidas[nome], regra["min"], regra["max"], regra["invertida"])
+        risco += regra["peso"] * nivel
     return round(risco, 1)
 
 
@@ -115,20 +130,36 @@ def buscar_thingspeak(config: dict) -> list[dict]:
     if resposta.status_code != 200:
         raise requests.RequestException(f"ThingSpeak respondeu com status {resposta.status_code}")
     feeds = resposta.json().get("feeds", [])
-    with open(config["arquivo_backup"], "w", encoding="utf-8") as arquivo:
-        json.dump(feeds, arquivo, ensure_ascii=False, indent=2)
+    try:
+        with open(config["arquivo_backup"], "w", encoding="utf-8") as arquivo:
+            json.dump(feeds, arquivo, ensure_ascii=False, indent=2)
+    except OSError as erro:
+        # Os dados vieram; so o plano B nao foi atualizado desta vez
+        print(f"Aviso: nao deu para atualizar o backup.json ({erro}).")
     return feeds
 
 
 def ler_backup(config: dict) -> list[dict]:
-    """Le as leituras guardadas em backup.json. Devolve lista vazia se nao existir."""
+    """Le as leituras guardadas em backup.json.
+
+    Devolve lista vazia se o arquivo nao existir, nao abrir ou estiver corrompido.
+    """
     if not os.path.exists(config["arquivo_backup"]):
+        print("Nao existe backup.json ainda: busque com internet pelo menos uma vez.")
         return []
-    with open(config["arquivo_backup"], encoding="utf-8") as arquivo:
-        return json.load(arquivo)
+    try:
+        with open(config["arquivo_backup"], encoding="utf-8") as arquivo:
+            feeds = json.load(arquivo)
+    except (OSError, json.JSONDecodeError) as erro:
+        print(f"O backup.json nao pode ser lido ({erro}).")
+        return []
+    if not isinstance(feeds, list):
+        print("O backup.json nao tem uma lista de leituras.")
+        return []
+    return feeds
 
 
-def converter_numero(texto) -> float | None:
+def converter_numero(texto: str | None) -> float | None:
     """Converte o texto do ThingSpeak em numero. Campo vazio ou invalido vira None."""
     try:
         return float(texto)
@@ -143,6 +174,8 @@ def montar_leituras(feeds: list[dict], config: dict) -> list[dict]:
     """
     leituras = []
     for feed in feeds:
+        if not isinstance(feed, dict) or "entry_id" not in feed or "created_at" not in feed:
+            continue  # registro estranho (backup editado a mao): pula
         medidas = {}
         for nome, regra in config["medidas"].items():
             valor = converter_numero(feed.get(regra["campo"]))
@@ -228,6 +261,9 @@ def mostrar_resumo(leituras: list[dict]) -> None:
     for faixa, total in contar_faixas(leituras).items():
         print(f"  {texto_faixa(faixa)}: {total}")
     print(f"Tendencia: {calcular_tendencia(leituras)}")
+    ultima = leituras[-1]
+    print(f"Agora ({ultima['horario']}): {texto_faixa(ultima['faixa'])}. "
+          f"AVISO: {CONFIG['avisos'][ultima['faixa']]}")
     quantidade, inicio, fim = maior_episodio_perigo(leituras)
     if quantidade:
         print(f"Maior episodio em Evite: {quantidade} leituras seguidas, de {inicio} a {fim}")
@@ -235,12 +271,28 @@ def mostrar_resumo(leituras: list[dict]) -> None:
         print("Nenhuma leitura em Evite.")
 
 
+def ler_historico(config: dict) -> list[dict]:
+    """Le o historico.json. Se estiver corrompido, guarda uma copia e comeca um novo."""
+    caminho = config["arquivo_historico"]
+    if not os.path.exists(caminho):
+        return []
+    try:
+        with open(caminho, encoding="utf-8") as arquivo:
+            historico = json.load(arquivo)
+        if isinstance(historico, list) and all(isinstance(l, dict) and "id" in l for l in historico):
+            return historico
+    except json.JSONDecodeError:
+        pass
+    copia = caminho.replace(".json", "_corrompido.json")
+    os.replace(caminho, copia)
+    print(f"O historico.json estava corrompido: guardei uma copia em {os.path.basename(copia)} "
+          "e comecei um historico novo.")
+    return []
+
+
 def salvar_historico(leituras: list[dict], config: dict) -> int:
     """Junta as leituras novas ao historico.json sem repetir (entry_id num set). Devolve quantas entraram."""
-    historico = []
-    if os.path.exists(config["arquivo_historico"]):
-        with open(config["arquivo_historico"], encoding="utf-8") as arquivo:
-            historico = json.load(arquivo)
+    historico = ler_historico(config)
     ids_salvos = {leitura["id"] for leitura in historico}
     novas = [leitura for leitura in leituras if leitura["id"] not in ids_salvos]
     historico.extend(novas)
@@ -282,7 +334,12 @@ def main() -> None:
 
     leituras: list[dict] = []
     while True:
-        opcao = mostrar_menu()
+        try:
+            opcao = mostrar_menu()
+        except (KeyboardInterrupt, EOFError):
+            # Ctrl+C ou fim da entrada: sai sem mostrar erro
+            print("\nAte logo!")
+            break
         if opcao == "1":
             leituras, origem = carregar_leituras(CONFIG)
             print(f"{len(leituras)} leituras validas carregadas de {origem}.")
@@ -295,9 +352,13 @@ def main() -> None:
         elif opcao == "3":
             mostrar_resumo(leituras)
         elif opcao == "4":
-            novas = salvar_historico(leituras, CONFIG)
-            salvar_relatorio(leituras, CONFIG)
-            print(f"historico.json: {novas} leituras novas. relatorio.csv atualizado.")
+            try:
+                novas = salvar_historico(leituras, CONFIG)
+                salvar_relatorio(leituras, CONFIG)
+                print(f"historico.json: {novas} leituras novas. relatorio.csv atualizado.")
+            except OSError as erro:
+                # Ex.: relatorio.csv aberto no Excel (o Windows bloqueia o arquivo)
+                print(f"Nao deu para salvar ({erro}). Feche o arquivo e tente de novo.")
         elif opcao == "0":
             print("Ate logo!")
             break
