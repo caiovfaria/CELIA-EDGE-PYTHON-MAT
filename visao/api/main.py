@@ -10,6 +10,9 @@ que o ESP32 no Wokwi assina [HU-07, RF10]. A foto nunca vai para o MQTT [RNF01].
 
 Decisao de 12/11/2026: deteccao de carros e motos removida; a API so detecta buracos.
 
+Desde 15/11/2026 tambem recebe as fotos da camera do poste (ESP32-CAM): rotas /poste/...
+em poste.py, guardadas no SQLite (banco.py) [HU-23, HU-24, RF22, RF23].
+
 Desde 13/11/2026 a mesma API tambem serve:
 - a mini trilha de IA (GET /trilha) [HU-19, RF18];
 - o assistente com Gemini Flash (POST /assistente/trajeto e /assistente/descricao)
@@ -34,11 +37,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 import paho.mqtt.client as mqtt
 from PIL import Image, UnidentifiedImageError
 from ultralytics import YOLO
 
+import banco
+import poste
 from assistente import (
     AssistenteIndisponivel,
     DadosGrandesDemais,
@@ -92,10 +98,16 @@ modelo_buracos = YOLO(os.path.join(PASTA_MODELOS, "buracos.pt"))  # treinado pel
 # enquanto isso [HU-05, RF08].
 estado_modelo = {"pronto": False}
 
+# Trava do modelo: so UMA predicao por vez. O aquecimento, o /analisar e a camera do poste
+# usam o mesmo modelo; sem a trava, duas fotos ao mesmo tempo (ou uma foto durante o
+# aquecimento) disputariam o estado interno do YOLO. Quem chega depois espera a vez.
+trava_modelo = threading.Lock()
+
 
 def aquecer_modelo() -> None:
     """Roda uma predicao numa imagem cinza para a primeira foto do cidadao ja sair rapida."""
-    modelo_buracos.predict(Image.new("RGB", (640, 640), "gray"), verbose=False)
+    with trava_modelo:
+        modelo_buracos.predict(Image.new("RGB", (640, 640), "gray"), verbose=False)
     estado_modelo["pronto"] = True
 
 # Licoes da mini trilha de IA [HU-19, RF18]: lidas uma vez, quando a API liga.
@@ -113,7 +125,8 @@ cliente_mqtt = mqtt.Client(
 
 @asynccontextmanager
 async def ciclo_de_vida(app: FastAPI):
-    """Aquece o modelo, conecta ao broker quando a API liga e desconecta quando ela desliga."""
+    """Aquece o modelo, cria o banco, conecta ao broker quando a API liga e desconecta ao desligar."""
+    banco.criar_tabelas()  # camera do poste [HU-24, RF23]
     # Thread separada: a API ja responde (GET / com modelo_pronto=False) enquanto aquece.
     threading.Thread(target=aquecer_modelo, daemon=True).start()
     if CONFIG["mqtt_ativo"]:
@@ -142,6 +155,9 @@ def publicar_resultado(resultado: str) -> bool:
 
 
 app = FastAPI(title="C.E.L.I.A. · API", version="0.4.0", lifespan=ciclo_de_vida)
+
+# Rotas da camera do poste (ESP32-CAM) [HU-23, HU-24]
+app.include_router(poste.router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -177,6 +193,26 @@ def classificar_trecho(caixas_buracos: list) -> str:
     return "livre"
 
 
+def analisar_imagem(imagem: Image.Image) -> tuple[str, list[dict]]:
+    """Roda o modelo de buracos na imagem (uma de cada vez) e devolve (resultado, caixas).
+
+    Funcao "lenta" (bloqueia enquanto o YOLO trabalha): as rotas chamam com
+    run_in_threadpool para a API continuar respondendo outras requisicoes enquanto isso.
+    """
+    with trava_modelo:
+        res_buracos = modelo_buracos.predict(imagem, conf=CONFIG["confianca_minima"], verbose=False)[0]
+    caixas_buracos = extrair_caixas(res_buracos)
+    return classificar_trecho(caixas_buracos), caixas_buracos
+
+
+# A camera do poste (poste.py) usa a mesma analise e o mesmo MQTT desta API.
+poste.configurar(
+    analisar=analisar_imagem,
+    publicar=publicar_resultado,
+    modelo_pronto=lambda: estado_modelo["pronto"],
+)
+
+
 async def ler_imagem_em_memoria(foto: UploadFile) -> Image.Image:
     """Valida o upload e abre a imagem SO na memoria, sem salvar em disco [RNF01, HU-08].
 
@@ -210,12 +246,7 @@ def status() -> dict:
 async def analisar(foto: UploadFile = File(...)) -> dict:
     """Analisa a foto com o modelo de buracos e avisa o poste [HU-05, HU-06, HU-07, RF08-RF10]."""
     imagem = await ler_imagem_em_memoria(foto)
-    conf = CONFIG["confianca_minima"]
-
-    # verbose=False evita imprimir detalhes de cada foto no terminal.
-    res_buracos = modelo_buracos.predict(imagem, conf=conf, verbose=False)[0]
-    caixas_buracos = extrair_caixas(res_buracos)
-    resultado = classificar_trecho(caixas_buracos)
+    resultado, caixas_buracos = await run_in_threadpool(analisar_imagem, imagem)
 
     # So o rotulo vai para o MQTT, nunca a foto [RNF01].
     mqtt_enviado = publicar_resultado(resultado)

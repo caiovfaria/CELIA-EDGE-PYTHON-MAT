@@ -14,3 +14,7 @@ treino/negativas.zip
 
 # Dataset baixado pelo experimento de confianca (recriar com treino/experimento_confianca.py)
 treino/dataset_teste/
+
+# Camera do poste: fotos recebidas e banco SQLite (gerados ao rodar a API)
+api/capturas/
+api/dados/*.db
