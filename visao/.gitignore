@@ -11,3 +11,6 @@ api/yolov8n.pt
 # Fotos negativas baixadas do Wikimedia (recriar com treino/baixar_negativas.py; fontes em treino/fontes_negativas.md)
 treino/negativas/
 treino/negativas.zip
+
+# Dataset baixado pelo experimento de confianca (recriar com treino/experimento_confianca.py)
+treino/dataset_teste/

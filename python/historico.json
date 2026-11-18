@@ -1,0 +1,362 @@
+[
+  {
+    "id": 1,
+    "horario": "2026-11-12T22:25:52Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 200.0
+    },
+    "risco": 0.0,
+    "faixa": "normal"
+  },
+  {
+    "id": 2,
+    "horario": "2026-11-12T22:26:12Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 200.0
+    },
+    "risco": 0.0,
+    "faixa": "normal"
+  },
+  {
+    "id": 3,
+    "horario": "2026-11-12T22:29:46Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 200.0
+    },
+    "risco": 0.0,
+    "faixa": "normal"
+  },
+  {
+    "id": 4,
+    "horario": "2026-11-12T22:30:06Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 200.0
+    },
+    "risco": 0.0,
+    "faixa": "normal"
+  },
+  {
+    "id": 5,
+    "horario": "2026-11-12T22:30:27Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 200.0
+    },
+    "risco": 0.0,
+    "faixa": "normal"
+  },
+  {
+    "id": 6,
+    "horario": "2026-11-12T22:30:48Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 200.0
+    },
+    "risco": 0.0,
+    "faixa": "normal"
+  },
+  {
+    "id": 7,
+    "horario": "2026-11-12T22:31:08Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 200.0
+    },
+    "risco": 0.0,
+    "faixa": "normal"
+  },
+  {
+    "id": 9,
+    "horario": "2026-11-12T22:33:00Z",
+    "medidas": {
+      "calor": 41.4,
+      "calcada": 200.0
+    },
+    "risco": 50.0,
+    "faixa": "perigo"
+  },
+  {
+    "id": 12,
+    "horario": "2026-11-13T12:41:29Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 200.0
+    },
+    "risco": 0.0,
+    "faixa": "normal"
+  },
+  {
+    "id": 13,
+    "horario": "2026-11-13T12:41:51Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 200.0
+    },
+    "risco": 0.0,
+    "faixa": "normal"
+  },
+  {
+    "id": 14,
+    "horario": "2026-11-13T12:42:14Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 200.0
+    },
+    "risco": 0.0,
+    "faixa": "normal"
+  },
+  {
+    "id": 15,
+    "horario": "2026-11-13T12:42:36Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 200.0
+    },
+    "risco": 0.0,
+    "faixa": "normal"
+  },
+  {
+    "id": 16,
+    "horario": "2026-11-13T12:42:58Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 200.0
+    },
+    "risco": 0.0,
+    "faixa": "normal"
+  },
+  {
+    "id": 17,
+    "horario": "2026-11-13T12:43:21Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 200.0
+    },
+    "risco": 0.0,
+    "faixa": "normal"
+  },
+  {
+    "id": 18,
+    "horario": "2026-11-13T12:43:44Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 50.0
+    },
+    "risco": 50.0,
+    "faixa": "perigo"
+  },
+  {
+    "id": 19,
+    "horario": "2026-11-15T03:34:03Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 200.0
+    },
+    "risco": 0.0,
+    "faixa": "normal"
+  },
+  {
+    "id": 20,
+    "horario": "2026-11-15T03:39:27Z",
+    "medidas": {
+      "calor": 30.0,
+      "calcada": 200.0
+    },
+    "risco": 0.0,
+    "faixa": "normal"
+  },
+  {
+    "id": 21,
+    "horario": "2026-11-15T03:39:50Z",
+    "medidas": {
+      "calor": 30.0,
+      "calcada": 200.0
+    },
+    "risco": 0.0,
+    "faixa": "normal"
+  },
+  {
+    "id": 22,
+    "horario": "2026-11-15T03:40:13Z",
+    "medidas": {
+      "calor": 34.4,
+      "calcada": 200.0
+    },
+    "risco": 13.3,
+    "faixa": "atencao"
+  },
+  {
+    "id": 23,
+    "horario": "2026-11-15T03:40:36Z",
+    "medidas": {
+      "calor": 34.4,
+      "calcada": 200.0
+    },
+    "risco": 13.3,
+    "faixa": "atencao"
+  },
+  {
+    "id": 24,
+    "horario": "2026-11-15T03:41:00Z",
+    "medidas": {
+      "calor": 42.2,
+      "calcada": 200.0
+    },
+    "risco": 50.0,
+    "faixa": "perigo"
+  },
+  {
+    "id": 25,
+    "horario": "2026-11-15T03:41:24Z",
+    "medidas": {
+      "calor": 42.2,
+      "calcada": 200.0
+    },
+    "risco": 50.0,
+    "faixa": "perigo"
+  },
+  {
+    "id": 26,
+    "horario": "2026-11-15T03:41:49Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 200.0
+    },
+    "risco": 0.0,
+    "faixa": "normal"
+  },
+  {
+    "id": 27,
+    "horario": "2026-11-15T03:42:12Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 200.0
+    },
+    "risco": 0.0,
+    "faixa": "normal"
+  },
+  {
+    "id": 28,
+    "horario": "2026-11-15T03:42:34Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 200.0
+    },
+    "risco": 0.0,
+    "faixa": "normal"
+  },
+  {
+    "id": 29,
+    "horario": "2026-11-15T03:42:57Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 100.0
+    },
+    "risco": 33.3,
+    "faixa": "atencao"
+  },
+  {
+    "id": 30,
+    "horario": "2026-11-15T03:43:21Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 100.0
+    },
+    "risco": 33.3,
+    "faixa": "atencao"
+  },
+  {
+    "id": 31,
+    "horario": "2026-11-15T03:43:43Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 100.0
+    },
+    "risco": 33.3,
+    "faixa": "atencao"
+  },
+  {
+    "id": 32,
+    "horario": "2026-11-15T03:44:07Z",
+    "medidas": {
+      "calor": 26.0,
+      "calcada": 100.0
+    },
+    "risco": 33.3,
+    "faixa": "atencao"
+  },
+  {
+    "id": 33,
+    "horario": "2026-11-15T03:44:29Z",
+    "medidas": {
+      "calor": 48.6,
+      "calcada": 100.0
+    },
+    "risco": 83.3,
+    "faixa": "perigo"
+  },
+  {
+    "id": 34,
+    "horario": "2026-11-15T03:44:52Z",
+    "medidas": {
+      "calor": 48.6,
+      "calcada": 100.0
+    },
+    "risco": 83.3,
+    "faixa": "perigo"
+  },
+  {
+    "id": 35,
+    "horario": "2026-11-15T03:45:15Z",
+    "medidas": {
+      "calor": 25.8,
+      "calcada": 50.0
+    },
+    "risco": 50.0,
+    "faixa": "perigo"
+  },
+  {
+    "id": 36,
+    "horario": "2026-11-15T03:45:38Z",
+    "medidas": {
+      "calor": 25.8,
+      "calcada": 50.0
+    },
+    "risco": 50.0,
+    "faixa": "perigo"
+  },
+  {
+    "id": 37,
+    "horario": "2026-11-15T03:46:01Z",
+    "medidas": {
+      "calor": 25.8,
+      "calcada": 50.0
+    },
+    "risco": 50.0,
+    "faixa": "perigo"
+  },
+  {
+    "id": 38,
+    "horario": "2026-11-15T03:46:24Z",
+    "medidas": {
+      "calor": 25.8,
+      "calcada": 200.0
+    },
+    "risco": 0.0,
+    "faixa": "normal"
+  },
+  {
+    "id": 39,
+    "horario": "2026-11-15T03:46:47Z",
+    "medidas": {
+      "calor": 25.8,
+      "calcada": 200.0
+    },
+    "risco": 0.0,
+    "faixa": "normal"
+  }
+]

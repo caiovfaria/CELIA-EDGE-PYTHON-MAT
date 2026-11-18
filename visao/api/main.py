@@ -22,6 +22,7 @@ Pagina de testes: http://127.0.0.1:8000/docs
 import io
 import json
 import os
+import threading
 import time
 import uuid
 from collections import defaultdict, deque
@@ -54,8 +55,10 @@ from assistente import (
 CONFIG = {
     # PROPOSTA: limite de 5 MB por foto (protege a API publica na VPS).
     "tamanho_max_bytes": 5 * 1024 * 1024,
-    # PROPOSTA: confianca minima de 0.25 (padrao do YOLO). Baixar aumenta o recall.
-    "confianca_minima": float(os.getenv("CONFIANCA_MINIMA", "0.25")),
+    # Confianca minima 0.40 (decisao do Joao, 14/11/2026), escolhida pelo experimento
+    # treino/experimento_confianca.py nas 67 imagens de teste: F1 76,2% (contra 74,9% em 0.25),
+    # 14 falsos positivos a menos; perde 5 de 130 buracos pequenos, medios e grandes iguais.
+    "confianca_minima": float(os.getenv("CONFIANCA_MINIMA", "0.40")),
     "tipos_aceitos": {"image/jpeg", "image/png", "image/webp"},
     # Origens que podem chamar a API pelo navegador (app React em desenvolvimento).
     "origens_permitidas": os.getenv(
@@ -83,6 +86,18 @@ PASTA_MODELOS = os.path.join(os.path.dirname(__file__), "modelos")
 # ---------------------------------------------------------------------------
 modelo_buracos = YOLO(os.path.join(PASTA_MODELOS, "buracos.pt"))  # treinado pela equipe [HU-06]
 
+# A PRIMEIRA predicao e lenta (o PyTorch se prepara nela; no teste de 14/11 passou de 1 min).
+# Por isso a API faz uma predicao de aquecimento numa imagem vazia logo que liga, em segundo
+# plano, e avisa em GET / quando terminou ("modelo_pronto"). O app mostra "Preparando a IA"
+# enquanto isso [HU-05, RF08].
+estado_modelo = {"pronto": False}
+
+
+def aquecer_modelo() -> None:
+    """Roda uma predicao numa imagem cinza para a primeira foto do cidadao ja sair rapida."""
+    modelo_buracos.predict(Image.new("RGB", (640, 640), "gray"), verbose=False)
+    estado_modelo["pronto"] = True
+
 # Licoes da mini trilha de IA [HU-19, RF18]: lidas uma vez, quando a API liga.
 with open(os.path.join(os.path.dirname(__file__), "dados", "trilha.json"), encoding="utf-8") as arquivo:
     TRILHA = json.load(arquivo)
@@ -98,7 +113,9 @@ cliente_mqtt = mqtt.Client(
 
 @asynccontextmanager
 async def ciclo_de_vida(app: FastAPI):
-    """Conecta ao broker quando a API liga e desconecta quando ela desliga."""
+    """Aquece o modelo, conecta ao broker quando a API liga e desconecta quando ela desliga."""
+    # Thread separada: a API ja responde (GET / com modelo_pronto=False) enquanto aquece.
+    threading.Thread(target=aquecer_modelo, daemon=True).start()
     if CONFIG["mqtt_ativo"]:
         # connect_async nao trava a API se o broker estiver fora do ar;
         # loop_start cria uma thread que mantem a conexao e reconecta sozinha.
@@ -185,8 +202,8 @@ async def ler_imagem_em_memoria(foto: UploadFile) -> Image.Image:
 
 @app.get("/")
 def status() -> dict:
-    """Rota simples para conferir se a API esta no ar."""
-    return {"status": "online", "projeto": "C.E.L.I.A."}
+    """Rota simples para conferir se a API esta no ar e se o modelo ja aqueceu."""
+    return {"status": "online", "projeto": "C.E.L.I.A.", "modelo_pronto": estado_modelo["pronto"]}
 
 
 @app.post("/analisar")
