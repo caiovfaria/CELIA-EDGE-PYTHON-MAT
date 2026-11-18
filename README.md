@@ -5,17 +5,18 @@
 <h3 align="center">Caminhos em Liberdade, Inclusão e Acessibilidade</h3>
 
 <p align="center">
-  Luz, calor e buracos na calçada perto dos pontos de ônibus do Rio de Janeiro, em uma leitura rápida,<br>
-  para a pessoa com deficiência física ou mobilidade reduzida escolher o melhor caminho até o trabalho.
+  Inteligência artificial a serviço de quem tem deficiência física ou mobilidade reduzida no Rio de Janeiro.<br>
+  Um modelo de visão computacional treinado pela equipe encontra buracos na calçada, e um assistente com o Gemini<br>
+  ajuda a pessoa a planejar o caminho até o trabalho e leva os problemas da rua até a Prefeitura.
 </p>
 
 <p align="center">
-  <img alt="ESP32" src="https://img.shields.io/badge/ESP32-Wokwi-E7352C?logo=espressif&logoColor=white">
+  <img alt="YOLOv8" src="https://img.shields.io/badge/YOLOv8-modelo%20pr%C3%B3prio-111F68">
+  <img alt="Gemini" src="https://img.shields.io/badge/Gemini-assistente%20LLM-8E75B2?logo=googlegemini&logoColor=white">
   <img alt="Python" src="https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white">
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-API-009688?logo=fastapi&logoColor=white">
-  <img alt="YOLOv8" src="https://img.shields.io/badge/YOLOv8-modelo%20pr%C3%B3prio-111F68">
-  <img alt="Gemini" src="https://img.shields.io/badge/Gemini-LLM-8E75B2?logo=googlegemini&logoColor=white">
   <img alt="SQLite" src="https://img.shields.io/badge/SQLite-banco-003B57?logo=sqlite&logoColor=white">
+  <img alt="ESP32" src="https://img.shields.io/badge/ESP32-Wokwi-E7352C?logo=espressif&logoColor=white">
   <img alt="MQTT" src="https://img.shields.io/badge/MQTT-HiveMQ-660066?logo=mqtt&logoColor=white">
   <img alt="ThingSpeak" src="https://img.shields.io/badge/ThingSpeak-IoT-1F6FB2">
   <img alt="React" src="https://img.shields.io/badge/React-app-61DAFB?logo=react&logoColor=black">
@@ -48,8 +49,8 @@
 | **Nome** | C.E.L.I.A. · Caminhos em Liberdade, Inclusão e Acessibilidade |
 | **Cidade e bairro** | Rio de Janeiro. Os testes são no bairro do Grajaú. |
 | **Cidadão beneficiado** | Pessoas com deficiência física ou mobilidade reduzida que vão ao trabalho a pé e de ônibus. E a Prefeitura, que recebe os reportes e acompanha os postes. |
-| **Problema em uma frase** | A pessoa sai de casa sem saber se a calçada e o ponto de ônibus do caminho até o trabalho estão seguros: escuros, quentes demais ou com buracos. |
-| **Como funciona** | Postes nos pontos de ônibus medem luz e calor; uma câmera com IA procura buracos; o app mostra a situação de cada trecho, sugere a rota mais acessível e leva os problemas até a Prefeitura. |
+| **Problema em uma frase** | A pessoa sai de casa sem saber se a calçada e o ponto de ônibus do caminho até o trabalho estão seguros, e os buracos que encontra raramente chegam a quem pode consertar. |
+| **Como funciona** | Uma IA de visão treinada pela equipe encontra buracos nas fotos da calçada, tiradas pelo cidadão ou pela câmera do poste. Um assistente com o Gemini planeja o trajeto e escreve os reportes para a Prefeitura. Postes nos pontos de ônibus medem o calor e a luz, e o app junta tudo num mapa com a rota mais acessível. |
 | **Indicador de impacto** | Quantas vezes o trajeto ficou inacessível no horário de ida ao trabalho, medido no histórico do poste. |
 | **ODS** | 10 (Redução das desigualdades), 11 (Cidades e comunidades sustentáveis) e 8 (Trabalho decente e crescimento econômico) |
 
@@ -67,135 +68,163 @@ O nome homenageia a avó Célia, que contou à equipe, por escrito, as dificulda
 
 Menos da metade trabalha, quem trabalha ganha menos, a calçada falha no país inteiro e o calor no ponto de ônibus do Rio já passou de 60 °C. A C.E.L.I.A. ataca a parte que dá para medir todo dia: o trajeto.
 
-## Impacto esperado
+## A jornada na prática
 
-- **Para a pessoa com deficiência:** sai de casa sabendo quais trechos estão escuros, quentes demais ou com buraco, e escolhe outro caminho antes de encontrar a barreira.
-- **Para a Prefeitura:** recebe reportes com foto, classificação da IA e descrição, e vê no histórico dos postes onde a calçada falha com mais frequência para decidir o que consertar, iluminar ou cobrir primeiro.
-- **Para a permanência no emprego:** a mini trilha de IA do app ensina, em lições curtas e acessíveis, a usar inteligência artificial no trabalho.
+1. **Antes de sair de casa,** a pessoa abre o app e pergunta ao assistente qual é o melhor caminho até o trabalho. O assistente responde com os trechos e os locais de apoio do mapa, como banheiros acessíveis e pontos de descanso, e avisa onde a calçada está ruim.
+2. **No caminho,** ela encontra um buraco e tira uma foto. A IA de visão confere a foto e marca o buraco. Só então o Gemini escreve a descrição para a Prefeitura, e a pessoa revisa antes de enviar.
+3. **Sem ninguém precisar reportar,** a câmera do poste fotografa a calçada a cada 20 s. Quando a IA acha um buraco, o trecho fica vermelho no mapa, e o Gemini escreve sozinho um reporte para a Prefeitura.
+4. **Na Prefeitura,** a equipe vê as últimas fotos de cada câmera com os buracos marcados, a caixa de reportes e o histórico de cada poste, e decide o que consertar primeiro.
+5. **Depois de chegar,** a mini trilha de IA ajuda a pessoa a usar inteligência artificial no próprio trabalho, porque chegar ao emprego é só a primeira parte.
 
-## Como funciona
+## A inteligência artificial no centro do projeto
+
+A C.E.L.I.A. usa dois tipos de IA, cada uma no que faz melhor. **A IA de visão vê**: ela confere se existe mesmo um buraco na foto. **O LLM escreve e conversa**: ele transforma dados em texto claro para o cidadão e para a Prefeitura. As duas trabalham em ordem, e uma confere a outra.
+
+### 1. Modelo de visão computacional treinado pela equipe
+
+**Propósito:** encontrar buracos na calçada em fotos reais, sem depender de alguém descrever o problema. É o único jeito de o sistema perceber um buraco, porque nenhum sensor do poste consegue medir isso.
+
+**Como foi construído:**
+
+| Etapa | O que a equipe fez |
+| --- | --- |
+| Arquitetura | YOLOv8n (Ultralytics), modelo leve de detecção de objetos, treinado a partir do `yolov8n.pt` |
+| Dados | [Pothole Dataset (KugaN, v2, CC BY 4.0)](https://universe.roboflow.com/kugan/pothole-mftcc): 1.395 imagens de treino, 133 de validação e 67 de teste |
+| Imagens negativas | 38 fotos de calçada portuguesa sem buraco, do Wikimedia Commons, com licença livre ([fontes](python-backend-IA/treino/fontes_negativas.md)), para o modelo parar de confundir desenhos da calçada com buraco |
+| Treino | Google Colab com GPU Tesla T4, 50 épocas, cerca de 20 minutos por treino ([notebook](python-backend-IA/treino/treino_buracos.ipynb)) |
+| Ajuste | Confiança mínima de 0,40, escolhida por experimento nas 67 imagens de teste: F1 de 76,2%, contra 74,9% com 0,25, e 14 falsos positivos a menos |
+
+**Resultado: o v2 foi adotado.**
+
+| Versão | Precisão | Recall | mAP@50 | Fotos de calçada do Rio |
+| --- | --- | --- | --- | --- |
+| v1 (só o dataset público) | 85,7% | 74,2% | 83,6% | 4 de 6 |
+| **v2 (com as 38 negativas)** | **85,0%** | **69,8%** | **79,9%** | **6 de 6** |
+
+No asfalto do dataset, o v1 vai um pouco melhor. Mas nas fotos de calçada, que é onde o projeto atua, só o v2 acertou todas: o calçadão com desenhos deixou de virar "buraco", e a calçada quebrada passou a ter a marcação sobre o dano real.
+
+**Onde ele roda:** na API em Python, em duas portas de entrada:
+- a foto que o cidadão manda pelo app (`POST /analisar`), lida só em memória e nunca guardada;
+- a foto da câmera do poste (`POST /poste/captura`), guardada no SQLite para a Prefeitura.
+
+Quando acha um buraco, a API devolve as caixas para o app desenhar sobre a foto e avisa o poste por MQTT, que deixa o trecho em Evite.
+
+### 2. Assistente de IA com o Gemini (LLM)
+
+**Propósito:** fazer a informação chegar a quem precisa, em linguagem simples. A pessoa com deficiência pergunta e entende o caminho sem ler tabelas, e a Prefeitura recebe reportes claros, padronizados e prontos para agir.
+
+**O que ele faz:**
+
+| Papel | Rota | Quem usa |
+| --- | --- | --- |
+| **Planejar o trajeto** | `POST /assistente/trajeto` | O cidadão pergunta, por exemplo, "qual o caminho mais seguro até o trabalho?" ou "onde tem banheiro acessível no caminho?". O assistente responde só com os trechos e locais que o app enviou |
+| **Ajudar a escrever o reporte** | `POST /assistente/descricao` | Depois que a IA de visão confirma o buraco, o Gemini escreve a descrição para a Prefeitura. Num obstáculo, ele organiza o que a pessoa contou. A pessoa sempre revisa antes de enviar |
+| **Reportar sozinho pela câmera** | dentro de `POST /poste/captura` | Quando a câmera do poste vê um buraco, o Gemini escreve o reporte automático para a Prefeitura, no máximo um a cada 10 min por poste |
+
+**Por que dá para confiar nele:**
+
+| Cuidado | Como funciona |
+| --- | --- |
+| Não inventa lugares (RN06) | A API confere se cada trecho e local citado existe nos dados do app. Se o modelo citar algo que não existe, a resposta é descartada |
+| A pessoa decide (RN07) | O texto sugerido nunca é enviado sozinho: o cidadão revisa e escolhe usar |
+| A visão confere antes | O Gemini não vê a foto. Por isso ele só escreve sobre buraco depois que o modelo de visão confirmou: uma foto de caderno não vira reporte |
+| Privacidade (LGPD) | CPF, telefone e e-mail são mascarados antes de qualquer texto sair para o Google. A chave fica só no servidor, nunca no app |
+| Sempre responde | Se o modelo principal estiver sobrecarregado, a API tenta mais dois (`gemini-3.8-flash`, `gemini-3.5-flash` e `gemini-3.5-flash-lite`). Se os três falharem, o app mostra o motivo e oferece um texto padrão, e o reporte segue |
+| Uso responsável da cota | Até 5 perguntas por minuto por endereço IP e no máximo 8.000 caracteres de dados por pedido. A resposta vem sempre em JSON, conferida pela API |
+| Não sai do assunto | O prompt de sistema limita o assistente a trajeto, calçadas, calor, banheiros, descanso e cursos de IA, e ele recusa pedidos como "ignore as regras" |
+
+No teste com o Gemini real, o assistente recomendou o ponto e o banheiro corretos, disse que não tinha informação sobre um local fora dos dados, recusou uma tentativa de fugir das regras e escreveu a descrição sem o telefone que o cidadão tinha digitado.
+
+### 3. Mini trilha de IA
+
+Cinco lições curtas e acessíveis, servidas pela API (`GET /trilha`): o que é inteligência artificial, como pedir bem para a IA, IA para escrever e revisar textos, IA a favor da acessibilidade e cuidados ao usar IA. É a parte do projeto que ajuda a pessoa a **permanecer** no emprego, não só a chegar até ele.
+
+## Como as partes se conectam
 
 ```mermaid
 flowchart LR
-    subgraph Poste["Poste no ponto de ônibus (ESP32)"]
-        S["DHT22 (calor)<br>LDR (luz)"] --> D["Decide o status<br>(Acessível, Atenção, Evite)"]
-        D --> L["LED no poste"]
-    end
-    CAM["Câmera do poste<br>(ESP32-CAM)"] -- "foto a cada 20 s" --> API
     APP["App React<br>(cidadão e Prefeitura)"] -- "foto do reporte" --> API
+    CAM["Câmera do poste<br>(ESP32-CAM)"] -- "foto a cada 20 s" --> API
     subgraph API["API Python (FastAPI)"]
-        Y["Modelo YOLOv8<br>de buracos"]
-        G["Assistente Gemini"]
-        DB[("SQLite")]
+        Y["Modelo YOLOv8<br>treinado pela equipe"] -- "buraco confirmado" --> G["Assistente Gemini"]
+        DB[("SQLite<br>capturas e reportes")]
     end
-    API -- "MQTT: buraco ou livre" --> D
-    D -- "leituras a cada 20 s" --> TS["ThingSpeak"]
+    G -- "descrição, rotas e reportes" --> APP
+    API -- "MQTT: buraco" --> P["Poste (ESP32)<br>calor e luz"]
+    P -- "leituras" --> TS["ThingSpeak"]
     TS --> APP
     TS --> PY["Programa de Lógica<br>(índice de risco)"]
-    API -- "descrição e rotas" --> APP
 ```
 
-1. **O poste mede.** O ESP32 lê o calor (DHT22) e a luz (LDR) a cada 5 s, decide o status do trecho, acende o LED e envia as leituras ao ThingSpeak.
-2. **A câmera procura buracos.** A ESP32-CAM manda uma foto da calçada para a API, que roda o modelo de buracos treinado pela equipe. Se achar um buraco, a API avisa o poste por MQTT, o trecho fica em Evite e um reporte é escrito pelo Gemini para a Prefeitura.
-3. **O app mostra e ajuda.** O app lê o ThingSpeak, pinta o mapa, sugere a rota mais acessível e deixa o cidadão reportar problemas com foto. O assistente Gemini ajuda a planejar o trajeto e a escrever a descrição, que a pessoa revisa antes de enviar.
-4. **O Python analisa o histórico.** O programa de Lógica lê as leituras do canal, calcula um índice de risco, a tendência e os episódios em Evite.
+## As outras partes do projeto
 
-## As partes do projeto
+### Backend em Python ([`python-backend-IA/`](python-backend-IA/README.md))
 
-### Edge · ESP32 no Wokwi ([`edge/`](edge/README.md))
-
-ESP32 com DHT22, LDR e LED RGB, programado com tarefas do FreeRTOS: uma lê e decide, outra envia ao ThingSpeak e outra ouve a câmera por MQTT. Nenhuma espera de rede trava o poste.
-
-| LED | Status | Quando aparece |
-| --- | --- | --- |
-| 🟢 Verde | **0 · Acessível** | Luz normal (ou sol) e calor normal |
-| 🟡 Amarelo | **1 · Atenção** | Rua escura, ou calor elevado sem sol direto |
-| 🔴 Vermelho | **2 · Evite** | Sol direto com calor elevado, ou buraco visto pela câmera |
-
-A rua conta como escura abaixo de 10 lux e como sol direto a partir de 25.000 lux. O índice de calor entra em atenção a partir de 32 °C e em perigo a partir de 41 °C. Uma mudança de luz só vale depois de 15 s (demonstração) ou 60 s (modo normal): a sombra de um ônibus ou o farol de um carro não mudam o trecho.
-
-### Python · programa de Lógica ([`python-backend-IA/`](python-backend-IA/README.md))
-
-Programa de terminal com menu que lê as leituras do canal público do ThingSpeak (índice de calor no field3 e luz no field7) e calcula o índice de risco de cada leitura: `risco = 0,5 × nível do calor + 0,5 × nível da luz`. Mostra as faixas com as mesmas cores do app, a tendência (PIORANDO depois de 3 altas seguidas) e o maior episódio em Evite. Usa um plano B com `backup.json` quando o ThingSpeak não responde, guarda o `historico.json` sem repetir leituras e gera o `relatorio.csv`.
-
-### Backend · API em Python ([`python-backend-IA/api/`](python-backend-IA/api/main.py))
+A API em FastAPI reúne as duas IAs e o banco:
 
 | Rota | O que faz |
 | --- | --- |
-| `POST /analisar` | Recebe a foto do app, procura buracos e devolve o resultado e as caixas para desenhar na foto. A foto é lida só em memória |
-| `POST /poste/captura` | Recebe o JPEG da câmera do poste (chave no cabeçalho), analisa, guarda no SQLite e avisa o poste por MQTT |
-| `GET /poste/capturas` e `GET /poste/reportes` | Área da Prefeitura: últimas fotos com os buracos marcados e os reportes gerados |
-| `POST /assistente/trajeto` | Assistente de IA que planeja o trajeto só com os dados do app |
-| `POST /assistente/descricao` | Sugere a descrição do reporte, que o cidadão revisa antes de enviar |
-| `GET /trilha` | Lições da mini trilha de IA |
+| `POST /analisar` | Foto do app: procura buracos e devolve o resultado e as caixas |
+| `POST /poste/captura` | Foto da câmera do poste (com chave no cabeçalho): analisa, guarda no SQLite, avisa o poste e pede o reporte ao Gemini |
+| `GET /poste/capturas` e `GET /poste/reportes` | Área da Prefeitura: últimas fotos com os buracos marcados e os reportes |
+| `POST /assistente/trajeto` e `POST /assistente/descricao` | Assistente Gemini |
+| `GET /trilha` | Mini trilha de IA |
 
-- **Modelo de buracos (YOLOv8):** treinado pela equipe no Google Colab com o [Pothole Dataset (KugaN, CC BY 4.0)](https://universe.roboflow.com/kugan/pothole-mftcc) e 38 fotos de calçada sem buraco. No teste: **precisão 85,0%, recall 69,8% e mAP@50 79,9%**. Nas fotos de calçada da equipe, acertou 6 de 6. Notebook em [`python-backend-IA/treino/`](python-backend-IA/treino/treino_buracos.ipynb).
-- **LLM (Gemini Flash):** chamado só pela API, nunca pelo app. Se um modelo falhar, a API tenta outros dois (`gemini-3.8-flash`, `gemini-3.5-flash` e `gemini-3.5-flash-lite`). O assistente responde só com os locais que o app enviou e não inventa lugares (RN06). CPF, telefone e e-mail são mascarados antes do envio.
-- **SQLite:** guarda as capturas da câmera do poste e os reportes, com consultas parametrizadas contra SQL injection.
-- **MQTT:** a API publica `buraco` ou `livre` no tópico `celia/poste01/camera` (HiveMQ), e o ESP32 assina.
+O **SQLite** guarda as capturas da câmera e os reportes, com consultas parametrizadas contra SQL injection. O **MQTT** (broker HiveMQ, tópico `celia/poste01/camera`) leva o aviso de buraco até o poste.
 
-### Cálculo ([`calculo/`](calculo/README.md))
+Na mesma pasta fica o **programa de Lógica**, um programa de terminal que lê o histórico do poste no ThingSpeak, calcula um índice de risco de 0 a 100 para cada leitura e mostra a tendência e os períodos em que o trecho ficou em Evite, com plano B quando a internet cai.
 
-Modelagem do fenômeno urbano com limites, derivadas e integrais: limite na regra da calçada, derivada da curva de calor do dia e integral da exposição ao calor no ponto de ônibus, com dados públicos da Open-Meteo e os registros do canal.
+### Edge · poste no ponto de ônibus ([`edge/`](edge/README.md))
+
+Um ESP32, simulado no Wokwi, mede o calor (DHT22) e a luz (LDR) no ponto de ônibus. Ele classifica o trecho como Acessível, Atenção ou Evite, acende um LED verde, amarelo ou vermelho e envia as leituras ao ThingSpeak a cada 20 s. Quando a IA de visão encontra um buraco, o poste recebe o aviso por MQTT e fica vermelho. Regras completas no [README do Edge](edge/README.md).
 
 ### Câmera do poste ([`camera/`](camera/README.md))
 
-Exemplo explicado da ESP32-CAM que fotografa a calçada a cada 20 s e envia para a API, e de uma segunda montagem, presa numa cadeira de rodas, que salva fotos de calçadas para treinar o modelo.
+ESP32-CAM que fotografa a calçada a cada 20 s e manda para a API. Uma segunda montagem, presa numa cadeira de rodas, salva fotos de calçadas do Rio para treinar o modelo.
+
+### Cálculo ([`calculo/`](calculo/README.md))
+
+Modelagem com limites, derivadas e integrais: derivada da curva de calor do dia e integral da exposição ao calor no ponto de ônibus, com dados públicos da Open-Meteo e os registros do canal.
 
 ### App ([repositório do Isaac](https://github.com/Isaacisrael10/celia-frontend))
 
-App em React publicado em [celia-frontend.vercel.app](https://celia-frontend.vercel.app): mapa com o status dos trechos, rotas acessíveis, reportes com foto e IA, locais de apoio, trilha de IA, área da Prefeitura e modo claro e escuro.
+App em React publicado em [celia-frontend.vercel.app](https://celia-frontend.vercel.app): mapa com o status dos trechos, rotas acessíveis, reporte com foto e IA, assistente, locais de apoio, trilha de IA, área da Prefeitura e modo claro e escuro.
 
 ## Stack
 
 | Camada | Tecnologias |
 | --- | --- |
-| Dispositivo | ESP32 DevKit, DHT22, LDR, LED RGB, FreeRTOS, simulação no Wokwi |
-| IoT | ThingSpeak (HTTP), MQTT com broker HiveMQ (PubSubClient e paho-mqtt) |
-| Câmera | ESP32-CAM |
-| Backend | Python 3.13, FastAPI, Uvicorn, SQLite |
-| Visão computacional | Ultralytics YOLOv8n, Google Colab, dataset do Roboflow Universe |
-| LLM | Google Gemini Flash (biblioteca google-genai) |
+| Visão computacional | Ultralytics YOLOv8n, Google Colab (GPU T4), Roboflow Universe, Wikimedia Commons |
+| LLM | Google Gemini Flash (biblioteca google-genai), com três modelos em sequência |
+| Backend | Python 3.13, FastAPI, Uvicorn, SQLite, Pillow |
+| IoT | ESP32, DHT22, LDR, FreeRTOS, Wokwi, ThingSpeak, MQTT (HiveMQ, PubSubClient e paho-mqtt), ESP32-CAM |
 | Lógica e Cálculo | Python, requests, json, csv, Open-Meteo |
 | Front-end | React, Vite, custom hooks, MockAPI, Vercel |
-| Testes | g++ com Arduino simulado, FastAPI TestClient |
+| Testes | FastAPI TestClient, g++ com Arduino simulado |
 
 ## O que já foi validado
 
 | Parte | Evidência |
 | --- | --- |
-| Poste no Wokwi (18/11) | Com Wi-Fi e MQTT conectados, passou por luz normal (verde), rua escura (amarelo), calor (amarelo) e sol direto com calor (vermelho). [Prints e detalhes](edge/evidencias/LEIA-ME.md) |
-| Firmware | 83 verificações das regras e 77 do firmware inteiro, com sensores, Wi-Fi, ThingSpeak e MQTT simulados. Todas passando |
-| API e assistente | 37 testes de falha (rede, Gemini fora do ar, câmera do poste, SQLite e entradas maliciosas), todos passando, e rodadas com o Gemini real |
-| Modelo de buracos | Precisão 85,0%, recall 69,8% e mAP@50 79,9% no conjunto de teste; 6 de 6 nas fotos de calçada da equipe |
-| Programa de Lógica | 17 verificações com dados simulados de luz e calor; os 4 cenários do roteiro do poste dão a mesma faixa do LED |
+| Modelo de buracos | Precisão 85,0%, recall 69,8% e mAP@50 79,9% no teste; 6 de 6 nas fotos de calçada da equipe |
+| Assistente Gemini | Rodadas com o Gemini real: ids corretos, sem inventar locais, recusa de pedido fora das regras e dado pessoal mascarado |
+| API | 37 testes de falha (rede, Gemini fora do ar, câmera do poste, SQLite e entradas maliciosas), todos passando |
+| App com IA | Foto com buraco: caixa desenhada e descrição do Gemini. Foto de caderno: nenhum reporte gerado. Gemini fora do ar: aviso com o motivo e texto padrão |
+| Poste no Wokwi | Os quatro status testados com Wi-Fi e MQTT conectados. [Prints e detalhes](edge/evidencias/LEIA-ME.md) |
+| Firmware | 83 verificações das regras e 77 do firmware inteiro, com sensores e rede simulados |
+| Programa de Lógica | 17 verificações com dados simulados |
 
 ## Experimente
 
-1. Abra o [projeto no Wokwi](https://wokwi.com/projects/481054670710338561) e inicie a simulação.
-2. Comece com o módulo de luz em **500 lux** e o DHT22 a **26 °C** e **50%** de umidade: o LED fica verde.
-3. Mude a luz para **5 lux**. Depois de 15 s, o LED fica amarelo e o serial mostra `motivo 1 luz`.
-4. Com **33 °C** e **50.000 lux**, o LED fica vermelho: sol direto com calor. O passo a passo completo está no [roteiro](edge/ROTEIRO_DEMO.md).
-5. Abra o [app](https://celia-frontend.vercel.app) para ver o poste no mapa e reportar um problema com foto.
+1. Abra o [app](https://celia-frontend.vercel.app) e vá em **Reportar**.
+2. Envie a foto de uma calçada com buraco: a IA de visão marca o buraco e o Gemini sugere a descrição, que você revisa.
+3. Envie a foto de qualquer outra coisa, como um caderno: a IA não encontra buraco, e o Gemini não escreve nada.
+4. Pergunte ao assistente qual o caminho mais acessível ou onde há um banheiro acessível.
+5. Para ver o poste reagir, siga o [roteiro do Wokwi](edge/ROTEIRO_DEMO.md).
 
 ## Como rodar
 
-**Testes do firmware** (com `g++`, na raiz do repositório):
-
-```bash
-g++ -std=c++17 -Wall -o tests/teste_logica tests/teste_logica.cpp && ./tests/teste_logica
-g++ -std=gnu++17 -I tests/arduino_falso -o tests/teste_sketch tests/teste_sketch.cpp && ./tests/teste_sketch
-```
-
-**Programa de Lógica:**
-
-```bash
-cd python-backend-IA
-pip install -r requirements.txt
-python main.py
-```
-
-**API** (copie `api/.env.example` para `api/.env` e coloque a sua chave do Gemini):
+**API com as IAs** (copie `api/.env.example` para `api/.env` e coloque a sua chave do Gemini):
 
 ```powershell
 cd python-backend-IA\api
@@ -206,30 +235,46 @@ python -m venv .venv
 
 A documentação interativa abre em http://127.0.0.1:8000/docs.
 
+**Programa de Lógica:**
+
+```bash
+cd python-backend-IA
+pip install -r requirements.txt
+python main.py
+```
+
+**Testes do firmware** (com `g++`, na raiz do repositório):
+
+```bash
+g++ -std=c++17 -Wall -o tests/teste_logica tests/teste_logica.cpp && ./tests/teste_logica
+g++ -std=gnu++17 -I tests/arduino_falso -o tests/teste_sketch tests/teste_sketch.cpp && ./tests/teste_sketch
+```
+
 ## Estrutura do repositório
 
 | Caminho | Conteúdo |
 | --- | --- |
-| [`edge/`](edge/README.md) | Firmware do ESP32 (`sketch.ino`), regras (`celia_logica.h`), circuito do Wokwi, guia do ThingSpeak e evidências |
-| [`python-backend-IA/`](python-backend-IA/README.md) | Todo o Python do projeto: programa de Lógica, API, assistente Gemini, SQLite, modelo de buracos e treino |
-| [`calculo/`](calculo/README.md) | Modelagem com limites, derivadas e integrais |
+| [`python-backend-IA/`](python-backend-IA/README.md) | API com o modelo de buracos, o assistente Gemini e o SQLite (`api/`), treino do modelo (`treino/`) e programa de Lógica (`main.py`) |
+| [`edge/`](edge/README.md) | Firmware do ESP32, circuito do Wokwi, guia do ThingSpeak e evidências |
 | [`camera/`](camera/README.md) | Programas da ESP32-CAM (câmera do poste e câmera da cadeira de rodas) |
-| [`tests/`](tests/) | Testes da lógica e do firmware com sensores e rede simulados |
-| [`INTEGRACAO.md`](INTEGRACAO.md) | Contrato entre as partes: campos do ThingSpeak, MQTT e rotas da API |
+| [`calculo/`](calculo/README.md) | Modelagem com limites, derivadas e integrais |
+| [`tests/`](tests/) | Testes do firmware com sensores e rede simulados |
+| [`INTEGRACAO.md`](INTEGRACAO.md) | Contrato entre as partes: rotas da API, MQTT e campos do ThingSpeak |
 | [`prompts.md`](prompts.md) | Registro do uso de IA (Edge, câmera e Cálculo); o do Python está em [`python-backend-IA/prompts.md`](python-backend-IA/prompts.md) |
 
 ## Privacidade e segurança
 
 - Nenhum dado pessoal real: os dados de exemplo são simulados ou públicos, com a fonte citada.
-- A foto enviada pelo app é analisada em memória e não é guardada. Só o resultado trafega (RNF01).
+- A foto enviada pelo app é analisada em memória e não é guardada. O Gemini nunca recebe a foto.
 - Antes de qualquer texto ir ao Gemini, CPF, telefone e e-mail são mascarados.
 - Chaves (Gemini, ThingSpeak, câmera) ficam só no `.env` ou na simulação em execução, nunca no repositório.
 
 ## Limitações conhecidas
 
-- O broker MQTT público serve só para o protótipo: qualquer pessoa pode ler e publicar no tópico. A versão real usaria um broker próprio com usuário, senha e TLS.
-- O modelo foi treinado com fotos de asfalto e pode errar em calçadas do Rio, como a pedra portuguesa. Ele encontra cerca de 7 em cada 10 buracos (recall de 69,8%).
-- O envio ao ThingSpeak usa HTTP simples na simulação. Um poste de verdade deve usar HTTPS com certificado.
+- O modelo de visão encontra cerca de 7 em cada 10 buracos (recall de 69,8%). Por isso, quando ele não acha, o cidadão ainda pode escrever e enviar o reporte.
+- O dataset público é de asfalto. As 38 negativas melhoraram o resultado na calçada, mas o próximo passo é treinar com fotos de calçadas do Rio, coletadas pela câmera da cadeira de rodas.
+- O Gemini na cota grátis pode ficar sobrecarregado e levar alguns segundos para responder. O app mostra um contador e oferece o texto padrão se ele falhar.
+- O broker MQTT público serve só para o protótipo. A versão real usaria um broker próprio com usuário, senha e TLS.
 - Só o poste do ponto de ônibus é lido ao vivo. Os outros trechos do mapa são simulados, e o app avisa isso.
 
 ---
