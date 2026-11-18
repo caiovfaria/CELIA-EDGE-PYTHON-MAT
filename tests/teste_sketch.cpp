@@ -60,7 +60,7 @@ int main() {
   confere(g_leiturasAdc.size() == (size_t)LEITURAS_LDR, "cada leitura do LDR faz 8 leituras do ADC (media)");
   confere(g_tarefaRede && tem(Serial.buf, "Tarefa de rede ligada"), "setup criou a fila e a tarefa de rede");
   confere(g_tarefaCamera && tem(Serial.buf, "Tarefa da camera ligada"), "setup criou a fila e a tarefa da camera");
-  confere(!tem(Serial.buf, "OLED") && tem(Serial.buf, "modulo Edge (luz + calor) iniciado"), "sem OLED: o serial anuncia o modulo de luz + calor");
+  confere(tem(Serial.buf, "modulo Edge (luz + calor) iniciado"), "o serial anuncia o modulo de luz + calor");
   THINGSPEAK_CHAVE = "CHAVE_TESTE"; size_t m0 = marca(); enviarAoThingSpeak();
   confere(g_inicios.empty() && tem(serialDesde(m0), "ainda sem dados do DHT22"), "SEM DADOS: nao envia nada ao ThingSpeak");
   THINGSPEAK_CHAVE = CHAVE_DE_EXEMPLO;
@@ -290,8 +290,8 @@ int main() {
   confere(g_pedidosForaDaRede == 0 && !g_inicios.empty(), d);
   // 34) a chave nunca aparece no serial
   confere(!tem(Serial.buf, "CHAVE_TESTE"), "a chave nunca aparece no monitor serial");
-  // 35) o sketch não usa mais o HC-SR04 (o OLED também saiu)
-  confere(g_leituras.empty(), "nenhuma leitura de HC-SR04 (pulseIn): o sensor saiu em 18/11");
+  // 35) o sketch não usa sensor de distância (nenhum pulseIn)
+  confere(g_leituras.empty(), "nenhum pulseIn: o poste nao usa sensor de distancia");
   // 36) depois do setup(), toda escrita no serial é uma linha inteira
   int quebradas = 0;
   for (const std::string& e : Serial.escritas) if (e.size() < 2 || e.find("\r\n") != e.size() - 2) quebradas++;

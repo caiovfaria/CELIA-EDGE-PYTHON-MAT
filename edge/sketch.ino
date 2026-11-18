@@ -6,10 +6,7 @@
   o status e o motivo ao ThingSpeak a cada 20 s. Uma tarefa da câmera escuta a API de
   visão por MQTT: "buraco" deixa o trecho em EVITE (motivo 5) por um tempo.
 
-  Mudança de 18/11/2026: saíram o HC-SR04 (distância na calçada) e o OLED, e entrou o
-  LDR (luminosidade). A luz vai num campo novo do canal, o field7. O field4 (distância)
-  fica vazio, então o Python da equipe não confunde luz com distância. A versão com
-  HC-SR04 e OLED continua no histórico do git (até o commit b47342a).
+  A luz (LDR) vai no field7 do canal. O field4 não é usado pelo poste e fica vazio.
 
   Como o poste decide (regras em celia_logica.h):
     rua escura (< 10 lux) ................... ATENÇÃO, motivo 1 (luz)
@@ -354,7 +351,7 @@ void acompanharWiFi() {
 
 // Uma tentativa de envio ao ThingSpeak.
 // Campos: 1 temperatura, 2 umidade, 3 índice de calor, 5 status, 6 motivo, 7 luminosidade (lux).
-// O field4 (distância) não vai: desde 18/11 o poste não tem HC-SR04.
+// O field4 não é usado pelo poste.
 void enviarAoThingSpeak() {
   // Pega o pacote mais novo. Se o loop() não deixou nenhum desde o último
   // envio, não há leitura nova: melhor não mandar dado velho.

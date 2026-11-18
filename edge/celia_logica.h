@@ -5,9 +5,6 @@
   Por isso ele roda igual no ESP32 e no computador, e foi testado fora do
   Wokwi (tests/teste_logica.cpp) antes de ir para o circuito.
 
-  Mudança de 18/11/2026: o HC-SR04 (distância na calçada) saiu e entrou o LDR
-  (luminosidade). O calor (DHT22) e a câmera continuam iguais.
-
   Os limites ainda estão em validação pela equipe: para mudar, troque só as
   constantes abaixo.
 */
@@ -62,7 +59,6 @@ const int STATUS_ATENCAO   = 1;  // amarelo
 const int STATUS_EVITE     = 2;  // vermelho
 
 // ---------- Motivo do status (field6 do ThingSpeak) ----------
-// Desde 18/11, o motivo 1 é a LUZ (antes, com o HC-SR04, era a calçada).
 const int MOTIVO_NENHUM = 0;
 const int MOTIVO_LUZ    = 1;
 const int MOTIVO_CALOR  = 2;
@@ -114,7 +110,6 @@ inline int calcularMotivo(int luz, int calor) {
 // Uma mudança na luz só vale depois de aparecer em leituras seguidas por um tempo
 // mínimo (1 minuto; 15 s no modo demonstração). Assim, a sombra de um ônibus ou o
 // farol de um carro passando não mudam o trecho, e um poste de luz apagado muda.
-// (Antes de 18/11, o mesmo confirmador servia para a calçada.)
 struct Confirmador {
   bool iniciado = false;          // a primeira leitura vale na hora
   int confirmado = LUZ_NORMAL;    // situação que está valendo

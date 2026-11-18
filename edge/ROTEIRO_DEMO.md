@@ -33,7 +33,7 @@ O status continua ATENCAO · luz. Isso mostra que uma luz rápida (um farol, uma
 
 ## Prints para o README
 
-Tire um print do Wokwi (circuito, LED e monitor serial) em cada uma destas situações. Os de 18/11 estão em `evidencias/luz_calor_18-11/`.
+Tire um print do Wokwi (circuito, LED e monitor serial) em cada uma destas situações. Os prints prontos estão em [`evidencias/`](evidencias/LEIA-ME.md).
 
 1. Passo 1 (verde)
 2. Passo 2 (amarelo pela rua escura)
@@ -48,7 +48,7 @@ Tire um print do Wokwi (circuito, LED e monitor serial) em cada uma destas situa
 - **A temperatura não muda no serial depois de mexer no DHT22:** numa rodada de 18/11, a mudança feita com a simulação rodando não chegou ao poste (a da luz chegava). Pare a simulação, mude a temperatura no DHT22 e dê play de novo.
 - **Luz perto de 25.000 lux:** cada passo do ADC vale uns 450 lux ali, então 25.000 pode virar 24.958 (normal). Use 50.000 lux para mostrar o sol direto.
 
-## Etapa 2: dados no ThingSpeak
+## Dados no ThingSpeak
 
 Antes, cole a Write API Key no `sketch.ino` do Wokwi, como explica o `THINGSPEAK.md`. A chave entra só enquanto a simulação roda: **não salve o projeto com ela**, nem mostre essa linha nos prints. A chave nunca vai para o GitHub.
 
@@ -64,13 +64,13 @@ Antes, cole a Write API Key no `sketch.ino` do Wokwi, como explica o `THINGSPEAK
 
 O canal recebe no máximo um envio a cada 15 s. Não rode duas abas do Wokwi com a mesma chave ao mesmo tempo: os envios se atropelam e o ThingSpeak recusa parte deles.
 
-**Prints para o README (Etapa 2):**
+**Prints do ThingSpeak:**
 
 1. Monitor serial com `Wi-Fi conectado.` e `ThingSpeak: registro ... gravado`
 2. Página do canal com os gráficos de luminosidade, índice de calor e status mudando
 3. Wokwi com o LED vermelho e, ao lado, o gráfico do field5 em 2 no mesmo momento
 
-## Etapa 4: buraco visto pela câmera (MQTT)
+## Buraco visto pela câmera (MQTT)
 
 O poste escuta o tópico `celia/poste01/camera` no `broker.hivemq.com`, numa tarefa só para a câmera (no serial, `Tarefa da camera ligada`). Assim, o aviso de buraco chega mesmo durante um envio lento ao ThingSpeak. Para mostrar sem depender da API de visão, publique a mensagem você mesmo:
 

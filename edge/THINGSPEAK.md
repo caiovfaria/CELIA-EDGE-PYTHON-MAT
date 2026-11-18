@@ -1,4 +1,4 @@
-# ThingSpeak · Etapa 2
+# ThingSpeak
 
 O poste manda as leituras e o status para um canal público do ThingSpeak, com 20 s entre um envio e o seguinte. O canal guarda o histórico e mostra os gráficos. O app e a parte de Python da equipe leem os dados de lá.
 
@@ -16,12 +16,12 @@ O envio roda numa **tarefa de rede**, separada do `loop()`. O `loop()` lê os se
 | field1 | Temperatura (°C) | 26.0 |
 | field2 | Umidade (%) | 50.0 |
 | field3 | Índice de calor (°C) | 26.0 |
-| field4 | Distância livre na calçada (cm). **Não vai desde 18/11**, quando o HC-SR04 saiu do poste. Só os registros antigos (1 a 39) têm esse campo | — |
+| field4 | Não é usado pelo poste (fica vazio) | — |
 | field5 | Status: 0 acessível (verde) · 1 atenção (amarelo) · 2 evite (vermelho) | 0 |
-| field6 | Motivo: 0 nenhum · 1 luz · 2 calor · 3 luz e calor · 5 buraco (visto pela câmera). Nos registros antigos, o 1 era a calçada. O 4 (veículo) foi retirado pela equipe | 0 |
+| field6 | Motivo: 0 nenhum · 1 luz · 2 calor · 3 luz e calor · 5 buraco (visto pela câmera). O 4 não é usado | 0 |
 | field7 | Luminosidade (lux, inteiros), medida pelo LDR | 499 |
 
-**Bloco do field7 no canal:** em *Channel Settings*, marque o **Field 7**, dê o nome `Luminosidade (lux)` e clique em *Save Channel*. Os campos 1 a 6 ficam como estão.
+No canal, o **Field 7** se chama `Luminosidade (lux)` (em *Channel Settings*).
 
 **O que cada registro representa.** Cada envio leva o pacote da **última leitura antes dele**, feita no máximo uns 5 s antes. O field5 é o status dessa leitura, o mesmo que o LED mostrava naquela hora. Como o envio roda em paralelo, o LED pode mudar durante um pedido lento, antes de o ThingSpeak gravar o registro. Nesse caso, a mudança vai no envio seguinte.
 
@@ -62,7 +62,7 @@ O monitor serial nunca mostra a chave, então os prints dele podem ir para o REA
 
 **Se a chave já ficou salva no projeto público** (ou foi parar num print ou no GitHub), troque a chave: aba **API Keys → Generate New Write API Key**. A antiga para de funcionar na hora. A Write API Key só permite gravar neste canal, mas, com ela, qualquer um poderia mandar dados falsos para o canal.
 
-Quem abrir o link público e rodar vai ver `cole a Write API Key no sketch para enviar` no serial. O resto funciona igual (sensores e LED). Os envios reais ficam comprovados pelo histórico do canal e pelas evidências em `evidencias/`.
+Quem abrir o link público e rodar vai ver `cole a Write API Key no sketch para enviar` no serial. O resto funciona igual (sensores e LED). Os envios reais ficam no histórico público do canal.
 
 ## Como ler os dados (app e Python)
 
@@ -73,7 +73,7 @@ O canal é público, então a leitura não precisa de chave:
 - Última luminosidade (field7): https://api.thingspeak.com/channels/3577155/fields/7/last.json
 - Em CSV, para a parte de Python: https://api.thingspeak.com/channels/3577155/feeds.csv?results=100
 
-Nos registros novos, o field4 vem vazio (`null`). O programa Python da equipe pula registros sem o field4, então hoje ele só usa os registros antigos (1 a 39). Para usar a luz, ele precisa ler o field7. É uma decisão da equipe, porque muda o que o Python recebe.
+O field4 vem vazio (`null`), porque o poste não usa esse campo. O programa Python da equipe ainda espera o field4 e pula os registros sem ele. Para usar a luz, ele precisa ler o field7. É uma decisão da equipe, porque muda o que o Python recebe.
 
 ## Se algo não bater
 
@@ -90,7 +90,7 @@ Nos registros novos, o field4 vem vazio (`null`). O programa Python da equipe pu
 
 O índice de calor vem da fórmula da biblioteca DHTesp: a regressão de Rothfusz, usada pelo serviço meteorológico dos EUA (NWS). O próprio NWS avisa que ela não vale para combinações extremas de temperatura e umidade, fora dos dados usados por Steadman. O simulador deixa o DHT22 ir até 80 °C, muito além disso. Com 80 °C e 100% de umidade, a fórmula dá 708,7 °C, um número sem sentido físico. A classificação continua certa, porque acima de 41 °C já é perigo.
 
-- **Na demonstração:** use temperaturas realistas para o Rio, como 26, 33 e 36 °C com 50% de umidade. Os registros 8 a 11 do canal (44 e 80 °C) ficam marcados como ensaio fora da faixa (`evidencias/etapa2/LEIA-ME.md`).
+- **Na demonstração:** use temperaturas realistas para o Rio, como 26, 33 e 36 °C com 50% de umidade.
 - **Pendente com a equipe:** para o app, a sugestão do Codex é não enviar o field3 quando a fórmula estiver fora da faixa e combinar como sinalizar "calor extremo". Mandar um valor cortado num limite pareceria uma medição de verdade. Isso muda o que o app recebe, então fica para a equipe decidir.
 
 ## Observação sobre segurança

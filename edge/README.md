@@ -6,9 +6,7 @@ O poste da C.E.L.I.A. no Wokwi. Ele mede o **calor** (DHT22) e a **luz** (LDR), 
 - **Canal no ThingSpeak:** https://thingspeak.mathworks.com/channels/3577155 (`GS-EDGE-C.E.L.I.A.`)
 - **Roteiro da demonstração:** [`ROTEIRO_DEMO.md`](ROTEIRO_DEMO.md) · **Guia do ThingSpeak:** [`THINGSPEAK.md`](THINGSPEAK.md)
 
-![Circuito no Wokwi: ESP32, módulo de luz (LDR), DHT22 e LED RGB](evidencias/luz_calor_18-11/circuito.png)
-
-**Mudança de 18/11/2026.** O HC-SR04 (distância na calçada) e o OLED saíram, e entrou o LDR. A luz vai num campo novo do canal, o **field7**. O field4 (distância) fica vazio nos registros novos, então o programa Python da equipe, que lê o field4 como distância em cm, não confunde luz com distância. As evidências de 11 a 15/11 (com HC-SR04 e OLED) continuam em [`evidencias/`](evidencias/LEIA-ME.md), e o código daquela versão fica no histórico do git (até o commit `b47342a`).
+![Circuito no Wokwi: ESP32, módulo de luz (LDR), DHT22 e LED RGB](evidencias/circuito.png)
 
 ## Circuito
 
@@ -44,12 +42,12 @@ A cada 5 s o poste lê o DHT22 e o LDR. O LDR é lido 8 vezes seguidas, e o post
 | field1 | Temperatura (°C) | 26.0 |
 | field2 | Umidade (%) | 50.0 |
 | field3 | Índice de calor (°C) | 26.0 |
-| field4 | *não vai desde 18/11* (era a distância do HC-SR04; fica vazio) | — |
+| field4 | *não é usado pelo poste* (fica vazio) | — |
 | field5 | Status: 0 acessível · 1 atenção · 2 evite | 0 |
 | field6 | Motivo: 0 nenhum · **1 luz** · 2 calor · 3 luz e calor · 5 buraco | 0 |
 | field7 | **Luminosidade (lux, inteiros)** | 499 |
 
-Desde 18/11, o **motivo 1 é a luz** (antes era a calçada). Status e motivo continuam nas faixas que a API aceita (status 0 a 2, motivo 0 a 5). Os detalhes do envio estão no [guia do ThingSpeak](THINGSPEAK.md).
+Status e motivo ficam nas faixas que a API aceita (status 0 a 2, motivo 0 a 5). Os detalhes do envio estão no [guia do ThingSpeak](THINGSPEAK.md).
 
 ## Arquivos
 
@@ -92,5 +90,5 @@ g++ -std=gnu++17 -I tests/arduino_falso -o teste_sketch tests/teste_sketch.cpp &
 - **ESP32 de verdade:** o ADC do ESP32 não é linear perto de 0 V e de 3,3 V, e cada LDR tem um rl10 e um gamma próprios. Num poste real, os limites de 10 e 25.000 lux precisam ser calibrados com um luxímetro.
 - **Perto de 25.000 lux** cada passo do ADC vale uns 450 lux. Na demonstração, use 50.000 lux para "sol direto".
 - **Broker público:** qualquer pessoa pode publicar no tópico da câmera. Serve para o protótipo.
-- **App e Python:** o Python da equipe pula os registros sem field4, então não usa os registros novos. O app mostra a cor certa (field5), mas ainda chama o motivo 1 de "calçada". Para usarem a luz, eles precisam ler o field7 e o novo significado do motivo 1. Fica para a equipe decidir.
+- **App e Python:** o Python da equipe ainda espera o field4 e pula os registros que não têm esse campo. O app mostra a cor certa (field5), mas chama o motivo 1 de "calçada". Para usarem a luz, eles precisam ler o field7 e o motivo 1 como luz. Fica para a equipe decidir.
 - **Mudar a temperatura com a simulação rodando** não chegou ao poste numa rodada de 18/11 (a luz mudava na hora). Se acontecer, pare a simulação, mude a temperatura no DHT22 e dê play de novo.

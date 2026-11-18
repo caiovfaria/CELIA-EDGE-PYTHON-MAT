@@ -18,7 +18,7 @@ using std::isnan;
 extern unsigned long g_millis; extern unsigned long g_eco; extern int g_pinos[40]; extern unsigned long g_mudouEm[40];  // quando cada pino mudou pela última vez
 inline void pinMode(int,int){} inline void digitalWrite(int p,int v){ if (g_pinos[p] != v) g_mudouEm[p] = g_millis; g_pinos[p]=v; } inline void delayMicroseconds(unsigned){}
 inline void delay(unsigned long ms){ g_millis += ms; }
-extern std::vector<unsigned long> g_leituras;  // horário de cada leitura do HC-SR04 (uma por leitura do sketch)
+extern std::vector<unsigned long> g_leituras;  // horário de cada pulseIn() (o poste não deve chamar nenhum)
 inline unsigned long pulseIn(int,int,unsigned long){ g_leituras.push_back(g_millis); return g_eco; }
 inline unsigned long millis(){ return g_millis; }
 // LDR: analogRead devolve o valor que o teste escolher em g_adc (0 a 4095) e guarda o
