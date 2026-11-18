@@ -8,6 +8,14 @@ O poste da C.E.L.I.A. no Wokwi. Ele mede o **calor** (DHT22) e a **luz** (LDR), 
 
 ![Circuito no Wokwi: ESP32, módulo de luz (LDR), DHT22 e LED RGB](evidencias/circuito.png)
 
+## Integrantes
+
+| Nome completo | RM | Parte no projeto |
+| --- | --- | --- |
+| Caio Viana de Faria | 570634 | Edge (ESP32 no Wokwi e ThingSpeak), câmera do poste e Cálculo |
+| Isaac Israel Rosa Coimbra | 570072 | Front-end (app React) e Web Development |
+| João Thees Castro Santiago | 572829 | Python: programa de Lógica, API de visão computacional, modelo de buracos e assistente Gemini |
+
 ## Circuito
 
 | Peça | Pino da peça | Pino do ESP32 |

@@ -10,6 +10,14 @@ Parte de **Differentiated Problem Solving** (prof. Celso) da Global Solution 202
 
 O relatório técnico completo (problema, modelo, análises e interpretação) é entregue em PDF no Teams.
 
+## Integrantes
+
+| Nome completo | RM | Parte no projeto |
+| --- | --- | --- |
+| Caio Viana de Faria | 570634 | Edge (ESP32 no Wokwi e ThingSpeak), câmera do poste e Cálculo |
+| Isaac Israel Rosa Coimbra | 570072 | Front-end (app React) e Web Development |
+| João Thees Castro Santiago | 572829 | Python: programa de Lógica, API de visão computacional, modelo de buracos e assistente Gemini |
+
 ## Como rodar
 
 ```sh
