@@ -21,6 +21,7 @@ extern bool g_mqttOk; extern int g_mqttConexoes, g_mqttDesconexoes, g_mqttAssina
 extern std::string g_mqttServidor; extern int g_mqttPorta, g_mqttKeepAlive; extern std::vector<std::string> g_mqttIds;
 extern std::vector<std::pair<unsigned long, std::string>> g_mqttAgendadas; extern std::string g_mqttRetida; extern unsigned long g_mqttRetidaAtrasoMs;
 extern int g_mqttPerdidas;  // mensagens que chegaram enquanto a conexão estava morta (perdidas)
+inline int g_mqttQos = -1;  // QoS da última inscrição (-1 = inscrição simples, sem QoS)
 typedef void (*CallbackMqtt)(char*, uint8_t*, unsigned int);
 class PubSubClient { bool conectado = false; int quedasNaConexao = 0, paradasNaConexao = 0; bool morta = false, pingPendente = false; unsigned long ultimaAtividade = 0;
   WiFiClient* cli; CallbackMqtt cb = nullptr; public:
@@ -47,6 +48,8 @@ class PubSubClient { bool conectado = false; int quedasNaConexao = 0, paradasNaC
     if (!g_mqttRetida.empty()) { g_mqttAgendadas.push_back({g_millis + g_mqttRetidaAtrasoMs, g_mqttRetida}); }
     return true;
   }
+  // inscrição com QoS: guarda o QoS pedido e faz o resto igual à inscrição simples
+  bool subscribe(const char* t, uint8_t qos) { g_mqttQos = qos; return subscribe(t); }
   int state() { return conectado ? 0 : -2; }
   bool loop() {
     // mensagens com horário marcado que já chegaram vão para a entrada

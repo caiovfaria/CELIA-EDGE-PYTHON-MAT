@@ -8,7 +8,8 @@
 #include <cstdlib>
 #include <vector>
 typedef uint8_t byte;
-inline long random(long maximo) { static long semente = 12345; semente = (semente * 1103515245 + 12345) & 0x7fffffff; return semente % maximo; }
+// conta em 32 bits sem sinal: dá a mesma sequência de antes, sem estourar o long de 32 bits (Windows)
+inline long random(long maximo) { static uint32_t semente = 12345; semente = (semente * 1103515245u + 12345u) & 0x7fffffffu; return (long)(semente % (uint32_t)maximo); }
 using std::isnan;
 #define HIGH 1
 #define LOW 0
@@ -20,6 +21,10 @@ inline void delay(unsigned long ms){ g_millis += ms; }
 extern std::vector<unsigned long> g_leituras;  // horário de cada leitura do HC-SR04 (uma por leitura do sketch)
 inline unsigned long pulseIn(int,int,unsigned long){ g_leituras.push_back(g_millis); return g_eco; }
 inline unsigned long millis(){ return g_millis; }
+// LDR: analogRead devolve o valor que o teste escolher em g_adc (0 a 4095) e guarda o
+// horário de cada leitura em g_leiturasAdc ("inline", do C++17: o teste não precisa declarar).
+inline int g_adc = 2000; inline std::vector<unsigned long> g_leiturasAdc;
+inline int analogRead(int){ g_leiturasAdc.push_back(g_millis); return g_adc; }
 // String do Arduino, só com o que o sketch usa
 struct String { std::string s; String(const char* c = "") : s(c) {} String(int v) : s(std::to_string(v)) {}
   String(double v, int d) { char b[32]; snprintf(b, 32, "%.*f", d, v); s = b; }

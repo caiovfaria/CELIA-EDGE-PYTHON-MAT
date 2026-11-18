@@ -1,27 +1,29 @@
 /*
-  C.E.L.I.A. – Módulo Edge (poste 01)
-  ===================================
-  Etapa 1: o ESP32 lê os sensores, decide sozinho o status do trecho
-  e mostra o resultado no OLED e no LED.
-  Etapa 2: manda as leituras, o status e o motivo para o canal público do
-  ThingSpeak, pelo Wi-Fi, com 20 s de folga entre um envio e o seguinte.
-  O envio roda numa tarefa separada (a "tarefa de rede"): se a internet
-  cair ou ficar lenta, o loop() continua lendo os sensores e mostrando
-  no OLED e no LED do mesmo jeito.
-  Etapa 4: uma segunda tarefa (a "tarefa da câmera") escuta a API de visão
-  por MQTT. Quando ela avisa "buraco", o trecho fica em EVITE (motivo 5) por
-  um tempo, mesmo que os sensores estejam sem leitura.
+  C.E.L.I.A. – Módulo Edge (poste 01): LUZ + CALOR
+  =================================================
+  O ESP32 lê os sensores, decide sozinho o status do trecho e mostra o resultado no LED
+  (e numa linha do monitor serial a cada leitura). Uma tarefa de rede manda as leituras,
+  o status e o motivo ao ThingSpeak a cada 20 s. Uma tarefa da câmera escuta a API de
+  visão por MQTT: "buraco" deixa o trecho em EVITE (motivo 5) por um tempo.
+
+  Mudança de 18/11/2026: saíram o HC-SR04 (distância na calçada) e o OLED, e entrou o
+  LDR (luminosidade). A luz vai num campo novo do canal, o field7. O field4 (distância)
+  fica vazio, então o Python da equipe não confunde luz com distância. A versão com
+  HC-SR04 e OLED continua no histórico do git (até o commit b47342a).
+
+  Como o poste decide (regras em celia_logica.h):
+    rua escura (< 10 lux) ................... ATENÇÃO, motivo 1 (luz)
+    calor (índice de calor >= 32 °C) ......... ATENÇÃO, motivo 2 (calor)
+    sol direto (>= 25.000 lux) + calor ....... EVITE,   motivo 3 (luz + calor)
+    buraco visto pela câmera ................. EVITE,   motivo 5 (vale 1 min na demonstração)
 
   Ligações (ver diagram.json):
     DHT22   -> temperatura e umidade ........ dados no pino 15
-    HC-SR04 -> distância livre na calçada ... TRIG no 5, ECHO no 18
-    OLED    -> SSD1306 128x64 (I2C) ......... SDA no 21, SCL no 22
+    LDR     -> módulo de luz (saída AO) ..... pino 34 (entrada analógica do ADC1)
     LED RGB -> catodo comum ................. vermelho no 25, verde no 26
+  O LDR fica no pino 34 porque o ADC2 do ESP32 não funciona com o Wi-Fi ligado.
 */
 
-#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
 #include <DHTesp.h>
 #include <WiFi.h>           // Wi-Fi do ESP32 (já vem com a placa, não precisa instalar)
 #include <HTTPClient.h>     // pedidos HTTP (também já vem com a placa)
@@ -34,7 +36,7 @@ const char* WIFI_NOME = "Wokwi-GUEST";
 const char* WIFI_SENHA = "";
 const int WIFI_CANAL = 6;  // o Wokwi recomenda o canal 6: a conexão fica mais rápida
 
-// Write API Key do canal (aba "API Keys" do ThingSpeak).
+// Write API Key do canal GS-EDGE-C.E.L.I.A. (aba "API Keys" do ThingSpeak).
 // Cole a chave só na hora de rodar no Wokwi e NÃO salve o projeto com ela:
 // o link do Wokwi é público. No GitHub e no projeto salvo, fica COLE_SUA_CHAVE_AQUI.
 const char* THINGSPEAK_CHAVE = "COLE_SUA_CHAVE_AQUI";
@@ -49,12 +51,14 @@ const int ESPERA_MAXIMA_HTTP_MS = 5000;  // limite para conectar e para esperar 
 // sem conexão o sketch força uma nova tentativa (para não atrapalhar a do ESP32).
 const unsigned long ESPERA_RECONEXAO_MS = 60000;
 
-// ---------- Câmera por MQTT (Etapa 4) ----------
+// ---------- Câmera por MQTT ----------
 // broker.hivemq.com é um servidor MQTT público e gratuito: serve para o protótipo,
 // mas qualquer pessoa pode publicar no tópico (limitação conhecida).
+// O tópico é o combinado com o João no INTEGRACAO.md.
 const char* MQTT_SERVIDOR = "broker.hivemq.com";
 const int MQTT_PORTA = 1883;
 const char* MQTT_TOPICO = "celia/poste01/camera";
+const int MQTT_QOS = 1;  // inscrição com QoS 1: se a API publicar com QoS 1, o broker reenvia até o poste confirmar
 const unsigned long MQTT_ESPERA_RECONEXAO_MS = 5000;  // sem conexão com o broker: tenta de novo a cada 5 s
 // Filtro da demonstração: todo aviso que o poste processa nos primeiros 3 s depois
 // de assinar o tópico é ignorado. A ideia é descartar mensagens antigas (guardadas no
@@ -74,8 +78,7 @@ const int MQTT_KEEPALIVE_S = 15;
 
 // ---------- Pinos ----------
 const int PINO_DHT = 15;
-const int PINO_TRIG = 5;
-const int PINO_ECHO = 18;
+const int PINO_LDR = 34;
 const int PINO_LED_VERMELHO = 25;
 const int PINO_LED_VERDE = 26;
 
@@ -87,23 +90,23 @@ const unsigned long INTERVALO_LEITURA_MS = 5000;  // lê os sensores a cada 5 s
 const unsigned long TEMPO_CONFIRMACAO_MS = MODO_DEMONSTRACAO ? 15000UL : 60000UL;
 // Um aviso de buraco vale 10 min (proposta da documentação). Na demonstração, 1 min.
 const unsigned long TEMPO_BURACO_MS = MODO_DEMONSTRACAO ? 60000UL : 600000UL;
+// O LDR é lido 8 vezes seguidas e o poste usa a média: tira o "chiado" do ADC.
+const int LEITURAS_LDR = 8;
 
 // ---------- Objetos dos componentes ----------
-Adafruit_SSD1306 tela(128, 64, &Wire, -1);  // OLED 128x64, sem pino de reset
 DHTesp dht;
-Confirmador calcada;                         // guarda a situação confirmada da calçada
+Confirmador luz;                          // guarda a situação confirmada da luz
 
-// ---------- Últimas leituras válidas ----------
-// Se um sensor falhar numa leitura, continuamos com o último valor bom
-// e avisamos na linha de cima do OLED.
+// ---------- Últimas leituras ----------
+// Se o DHT22 falhar numa leitura, continuamos com o último valor bom e avisamos no serial.
+// O LDR sempre devolve um número (não tem como "falhar" como o DHT22).
 float temperatura = 0;
 float umidade = 0;
 float indiceCalor = 0;
-float distanciaCm = 0;
+int adcLuz = 0;                    // média das leituras do ADC (0 a 4095)
+long luxLidos = 0;                 // a mesma leitura convertida em lux
 bool temLeituraCalor = false;      // o DHT22 já deu pelo menos uma leitura válida?
-bool temLeituraDistancia = false;  // o HC-SR04 já deu pelo menos um eco válido?
 bool falhouCalor = false;          // a última tentativa de ler o DHT22 falhou?
-bool falhouDistancia = false;      // a última tentativa de ler o HC-SR04 falhou?
 unsigned long ultimaLeitura = 0;
 
 // ---------- Último status decidido ----------
@@ -117,13 +120,12 @@ int ultimoMotivo = MOTIVO_NENHUM;
 // pacote quando chega a hora de enviar. Como cada um mexe só na sua cópia,
 // o loop() e a tarefa de rede nunca leem uma variável pela metade.
 struct PacoteEnvio {
-  bool temStatus;        // false enquanto o OLED mostra SEM DADOS
+  bool temStatus;        // false enquanto o poste está em SEM DADOS
   bool falhouCalor;      // o DHT22 falhou na última leitura?
-  bool falhouDistancia;  // o HC-SR04 falhou na última leitura?
   float temperatura;
   float umidade;
   float indiceCalor;
-  int distanciaCm;
+  long lux;
   int status;
   int motivo;
 };
@@ -156,24 +158,17 @@ unsigned int menorFolgaCamera = 0;       // menor sobra de memória da tarefa da
 // (Por isso não usamos Serial.println() depois do setup(): ele faz duas escritas, o
 // texto e depois a quebra de linha, e outra tarefa poderia escrever entre as duas.)
 void linhaNoSerial(const char* texto) {
-  char linha[200];
+  char linha[260];
   snprintf(linha, sizeof(linha), "%s\r\n", texto);
   Serial.print(linha);
 }
 
-// Mede a distância livre com o HC-SR04. Devolve -1 se não houver eco.
-float medirDistanciaCm() {
-  digitalWrite(PINO_TRIG, LOW);
-  delayMicroseconds(2);
-  digitalWrite(PINO_TRIG, HIGH);  // um pulso de 10 µs manda o sensor emitir o som
-  delayMicroseconds(10);
-  digitalWrite(PINO_TRIG, LOW);
-
-  // ECHO fica em HIGH pelo tempo de ida e volta do som. Espera no máximo 30 ms (~5 m).
-  unsigned long duracaoUs = pulseIn(PINO_ECHO, HIGH, 30000);
-  if (duracaoUs == 0) return -1;
-
-  return distanciaPeloEco(duracaoUs);  // conversão em celia_logica.h (340 m/s, cm inteiros)
+// Lê o LDR: média de 8 leituras do ADC, convertida em lux (conta em celia_logica.h).
+void lerLuz() {
+  long soma = 0;
+  for (int i = 0; i < LEITURAS_LDR; i++) soma += analogRead(PINO_LDR);
+  adcLuz = (int)(soma / LEITURAS_LDR);
+  luxLidos = luxPeloAdc(adcLuz);
 }
 
 // Lê os dois sensores e calcula o índice de calor.
@@ -190,16 +185,7 @@ void lerSensores() {
     falhouCalor = true;
     linhaNoSerial("Aviso: falha ao ler o DHT22; mantendo a leitura anterior.");
   }
-
-  float distancia = medirDistanciaCm();
-  if (distancia >= 0) {
-    distanciaCm = distancia;
-    temLeituraDistancia = true;
-    falhouDistancia = false;
-  } else {
-    falhouDistancia = true;
-    linhaNoSerial("Aviso: HC-SR04 sem eco; mantendo a leitura anterior.");
-  }
+  lerLuz();
 }
 
 // Verde = acessível, amarelo (vermelho + verde) = atenção, vermelho = evite.
@@ -222,102 +208,23 @@ void apagarLed() {
   digitalWrite(PINO_LED_VERDE, LOW);
 }
 
-// Mostra no OLED o status, o motivo e as duas leituras.
-// A linha "Faixa" mostra o que o sensor leu por último; o status grande só muda
-// depois da confirmação (enquanto isso, a linha de cima mostra a contagem).
-void mostrarNaTela(int status, int motivo, int calcadaLida, int calor, unsigned long faltaMs, unsigned long buracoRestaMs) {
-  tela.clearDisplay();
-  tela.setTextColor(SSD1306_WHITE);
-
-  // Linha de cima: aviso de falha, contagem da confirmação ou nome do poste
-  tela.setTextSize(1);
-  tela.setCursor(0, 0);
-  if (falhouDistancia && falhouCalor) {
-    tela.print("Aviso: falha sensores");
-  } else if (falhouDistancia) {
-    tela.print("Aviso: falha HC-SR04");
-  } else if (falhouCalor) {
-    tela.print("Aviso: falha DHT22");
-  } else if (buracoRestaMs > 0) {
-    tela.print("Buraco (camera) ");
-    tela.print((buracoRestaMs + 999) / 1000);  // quanto falta para o aviso vencer
-    tela.print("s");
-  } else if (faltaMs > 0) {
-    tela.print("Confirmando... ");
-    tela.print((faltaMs + 999) / 1000);  // arredonda para cima, em segundos
-    tela.print("s");
-  } else {
-    tela.print("C.E.L.I.A. poste 01");
-  }
-
-  // Status em letras grandes
-  tela.setTextSize(2);
-  tela.setCursor(0, 13);
-  tela.print(nomeStatus(status));
-
-  // Detalhes
-  tela.setTextSize(1);
-  tela.setCursor(0, 34);
-  tela.print("Motivo: ");
-  tela.print(nomeMotivo(motivo));
-
-  tela.setCursor(0, 44);
-  tela.print("Faixa ");
-  tela.print((int)distanciaCm);
-  tela.print("cm ");
-  tela.print(nomeCalcada(calcadaLida));
-
-  tela.setCursor(0, 54);
-  tela.print("Calor ");
-  tela.print(indiceCalor, 1);
-  tela.print("C ");
-  tela.print(nomeCalor(calor));
-
-  tela.display();
-}
-
-// Tela da partida, enquanto algum sensor ainda não deu uma leitura válida.
-// Se a câmera avisou um buraco, o status já é EVITE: ele não depende dos sensores.
-void mostrarSemDados(unsigned long buracoRestaMs) {
-  tela.clearDisplay();
-  tela.setTextColor(SSD1306_WHITE);
-  tela.setTextSize(1);
-  tela.setCursor(0, 0);
-  if (buracoRestaMs > 0) {
-    tela.print("Buraco (camera) ");
-    tela.print((buracoRestaMs + 999) / 1000);
-    tela.print("s");
-  } else {
-    tela.print("C.E.L.I.A. poste 01");
-  }
-
-  tela.setTextSize(2);
-  tela.setCursor(0, 13);
-  tela.print(buracoRestaMs > 0 ? "EVITE" : "SEM DADOS");
-
-  tela.setTextSize(1);
-  tela.setCursor(0, 34);
-  tela.print(buracoRestaMs > 0 ? "Motivo: buraco" : "Aguardando sensores");
-  // estado da tentativa ATUAL de cada sensor
-  tela.setCursor(0, 44);
-  tela.print("HC-SR04: ");
-  tela.print(falhouDistancia ? "sem eco" : "ok");
-  tela.setCursor(0, 54);
-  tela.print("DHT22: ");
-  tela.print(falhouCalor ? "sem resposta" : "ok");
-
-  tela.display();
-}
-
 // Linha de registro no monitor serial (serve de evidência do funcionamento).
-// A linha é montada inteira antes (snprintf) e sai numa escrita só (linhaNoSerial).
-void registrarNoSerial(unsigned long agora, int calcadaLida, int calcadaValida, int calor, int status, int motivo) {
-  char linha[180];
-  snprintf(linha, sizeof(linha),
-           "t=%lus | T %.1fC U %.0f%% IC %.1fC (%s) | faixa %dcm lida %s / vale %s | STATUS %d %s | motivo %d %s",
-           agora / 1000, temperatura, umidade, indiceCalor, nomeCalor(calor),
-           (int)distanciaCm, nomeCalcada(calcadaLida), nomeCalcada(calcadaValida),
-           status, nomeStatus(status), motivo, nomeMotivo(motivo));
+// "lida" é o que o LDR leu agora; "vale" é a situação da luz já confirmada.
+// No fim, quando for o caso: a contagem da confirmação e do aviso de buraco.
+void registrarNoSerial(unsigned long agora, int luzLida, int luzValida, int calor, int status, int motivo,
+                       unsigned long faltaMs, unsigned long buracoRestaMs) {
+  char linha[240];
+  int n = snprintf(linha, sizeof(linha),
+                   "t=%lus | T %.1fC U %.0f%% IC %.1fC (%s) | luz %ld lux (adc %d) lida %s / vale %s | STATUS %d %s | motivo %d %s",
+                   agora / 1000, temperatura, umidade, indiceCalor, nomeCalor(calor),
+                   luxLidos, adcLuz, nomeLuz(luzLida), nomeLuz(luzValida),
+                   status, nomeStatus(status), motivo, nomeMotivo(motivo));
+  if (faltaMs > 0 && n > 0 && n < (int)sizeof(linha)) {
+    n += snprintf(linha + n, sizeof(linha) - n, " | confirmando luz %lus", (faltaMs + 999) / 1000);
+  }
+  if (buracoRestaMs > 0 && n > 0 && n < (int)sizeof(linha)) {
+    snprintf(linha + n, sizeof(linha) - n, " | buraco (camera) %lus", (buracoRestaMs + 999) / 1000);
+  }
   linhaNoSerial(linha);
 }
 
@@ -326,46 +233,43 @@ void atualizarTrecho() {
   unsigned long agora = millis();
   lerSensores();
 
-  // Calçada: só uma leitura válida conta para a confirmação.
-  if (falhouDistancia) {
-    cancelarConfirmacao(calcada);  // sem eco: a mudança em andamento recomeça do zero
-  } else {
-    atualizarConfirmacao(calcada, classificarCalcada(distanciaCm), agora, TEMPO_CONFIRMACAO_MS);
-  }
+  // Luz: o LDR sempre dá uma leitura, então ela sempre conta para a confirmação.
+  int luzLida = classificarLuz(luxLidos);
+  atualizarConfirmacao(luz, luzLida, agora, TEMPO_CONFIRMACAO_MS);
 
   // Câmera: com um buraco valendo, EVITE e motivo 5 (regras em celia_logica.h).
   // O buraco vale sozinho: não precisa de leitura dos sensores.
   bool buraco = buracoValendo(temBuraco, buracoDesde, agora, TEMPO_BURACO_MS);
   unsigned long buracoRestaMs = buraco ? TEMPO_BURACO_MS - (uint32_t)(agora - buracoDesde) : 0;
 
-  // Na partida, enquanto algum sensor nunca respondeu, os sensores não decidem nada:
-  // sem buraco, mostra SEM DADOS e deixa o LED apagado (na dúvida, não é verde).
-  if (!calcada.iniciado || !temLeituraCalor) {
-    mostrarSemDados(buracoRestaMs);
+  // Na partida, enquanto o DHT22 nunca respondeu, os sensores não decidem nada:
+  // sem buraco, o LED fica apagado (na dúvida, não é verde) e nada vai para o ThingSpeak.
+  if (!temLeituraCalor) {
+    char linha[160];
     if (buraco) {
       mostrarNoLed(STATUS_EVITE);
-      linhaNoSerial("Sensores ainda sem leitura valida, mas a camera viu um buraco: EVITE (motivo buraco).");
+      snprintf(linha, sizeof(linha), "DHT22 ainda sem leitura valida, mas a camera viu um buraco: EVITE (motivo buraco) | luz %ld lux | buraco (camera) %lus",
+               luxLidos, (buracoRestaMs + 999) / 1000);
       temStatus = true;              // o status vem da câmera: vai para o ThingSpeak
       ultimoStatus = STATUS_EVITE;
       ultimoMotivo = MOTIVO_BURACO;
     } else {
       apagarLed();
-      linhaNoSerial("Aguardando a primeira leitura valida dos dois sensores...");
-      temStatus = false;             // sem sensores e sem buraco: ainda não há status
+      snprintf(linha, sizeof(linha), "SEM DADOS: aguardando a primeira leitura valida do DHT22 (luz agora: %ld lux)", luxLidos);
+      temStatus = false;             // sem DHT22 e sem buraco: ainda não há status
     }
+    linhaNoSerial(linha);
     return;
   }
 
-  int calcadaLida = classificarCalcada(distanciaCm);  // o que o sensor leu por último
-  int calcadaValida = calcada.confirmado;             // o que já foi confirmado
+  int luzValida = luz.confirmado;                   // o que já foi confirmado
   int calor = classificarCalor(indiceCalor);
-  int status = statusComCamera(calcularStatus(calcadaValida, calor), buraco);
-  int motivo = motivoComCamera(calcularMotivo(calcadaValida, calor), buraco);
-  unsigned long faltaMs = msParaConfirmar(calcada, agora, TEMPO_CONFIRMACAO_MS);
+  int status = statusComCamera(calcularStatus(luzValida, calor), buraco);
+  int motivo = motivoComCamera(calcularMotivo(luzValida, calor), buraco);
+  unsigned long faltaMs = msParaConfirmar(luz, agora, TEMPO_CONFIRMACAO_MS);
 
   mostrarNoLed(status);
-  mostrarNaTela(status, motivo, calcadaLida, calor, faltaMs, buracoRestaMs);
-  registrarNoSerial(agora, calcadaLida, calcadaValida, calor, status, motivo);
+  registrarNoSerial(agora, luzLida, luzValida, calor, status, motivo, faltaMs, buracoRestaMs);
 
   // Guarda o status: ele vai no pacote do próximo envio ao ThingSpeak
   temStatus = true;
@@ -380,11 +284,10 @@ void guardarParaEnvio() {
   PacoteEnvio pacote;
   pacote.temStatus = temStatus;
   pacote.falhouCalor = falhouCalor;
-  pacote.falhouDistancia = falhouDistancia;
   pacote.temperatura = temperatura;
   pacote.umidade = umidade;
   pacote.indiceCalor = indiceCalor;
-  pacote.distanciaCm = (int)distanciaCm;
+  pacote.lux = luxLidos;
   pacote.status = ultimoStatus;
   pacote.motivo = ultimoMotivo;
   xQueueOverwrite(filaEnvio, &pacote);
@@ -413,9 +316,7 @@ void verCamera() {
 }
 
 // Mede quanto sobrou, no pior momento até agora, da memória (a "pilha") da tarefa
-// que chamou. Avisa no serial só quando a sobra diminui: serve para conferir se os
-// 8 KB de cada tarefa bastam. No ESP32, o valor vem em bytes.
-// Devolve a nova menor sobra, para a tarefa guardar.
+// que chamou. Avisa no serial só quando a sobra diminui. No ESP32, o valor vem em bytes.
 unsigned int medirPilha(const char* tarefa, unsigned int menorAteAgora) {
   unsigned int folga = uxTaskGetStackHighWaterMark(NULL);
   if (menorAteAgora == 0 || folga < menorAteAgora) {
@@ -432,8 +333,7 @@ unsigned int medirPilha(const char* tarefa, unsigned int menorAteAgora) {
 // se um pedido HTTP demorar, só esta tarefa espera.
 
 // Acompanha o Wi-Fi: avisa no serial quando conecta ou cai. O ESP32 tenta
-// reconectar sozinho; se passar 1 minuto sem conexão, o sketch força uma nova
-// tentativa (e espera mais 1 minuto antes de forçar de novo).
+// reconectar sozinho; se passar 1 minuto sem conexão, o sketch força uma nova tentativa.
 void acompanharWiFi() {
   bool conectado = (WiFi.status() == WL_CONNECTED);
   if (conectado && !wifiConectado) {
@@ -453,7 +353,8 @@ void acompanharWiFi() {
 }
 
 // Uma tentativa de envio ao ThingSpeak.
-// Campos: 1 temperatura, 2 umidade, 3 índice de calor, 4 distância, 5 status, 6 motivo.
+// Campos: 1 temperatura, 2 umidade, 3 índice de calor, 5 status, 6 motivo, 7 luminosidade (lux).
+// O field4 (distância) não vai: desde 18/11 o poste não tem HC-SR04.
 void enviarAoThingSpeak() {
   // Pega o pacote mais novo. Se o loop() não deixou nenhum desde o último
   // envio, não há leitura nova: melhor não mandar dado velho.
@@ -462,17 +363,10 @@ void enviarAoThingSpeak() {
     linhaNoSerial("ThingSpeak: sem leitura nova desde o ultimo envio, envio pulado.");
     return;
   }
-  // Na partida (SEM DADOS) ainda não há status. Com os dois sensores falhando,
-  // o status seria só a repetição do antigo. Nos dois casos, não manda nada:
-  // depois de 10 min sem envio, o app mostra o trecho em cinza (sem dados).
-  // A exceção é o buraco (motivo 5): ele vem da câmera, não dos sensores, então
-  // vai mesmo assim, só com os campos 5 e 6 (os dos sensores ficam de fora).
+  // Na partida (SEM DADOS) ainda não há status: não manda nada. A exceção é o buraco
+  // (motivo 5): ele vem da câmera, então vai mesmo assim (sem os campos do DHT22).
   if (!pacote.temStatus) {
-    linhaNoSerial("ThingSpeak: ainda sem dados dos sensores, envio pulado.");
-    return;
-  }
-  if (pacote.falhouCalor && pacote.falhouDistancia && pacote.motivo != MOTIVO_BURACO) {
-    linhaNoSerial("ThingSpeak: os dois sensores falharam, envio pulado.");
+    linhaNoSerial("ThingSpeak: ainda sem dados do DHT22, envio pulado.");
     return;
   }
   if (strcmp(THINGSPEAK_CHAVE, CHAVE_DE_EXEMPLO) == 0) {
@@ -484,8 +378,8 @@ void enviarAoThingSpeak() {
     return;
   }
 
-  // Monta o endereço do pedido. Se um sensor falhou na última leitura, o campo
-  // dele fica de fora: o gráfico mostra um buraco em vez de repetir um valor velho.
+  // Monta o endereço do pedido. Se o DHT22 falhou na última leitura, os campos dele
+  // ficam de fora: o gráfico mostra um buraco em vez de repetir um valor velho.
   String url = "http://api.thingspeak.com/update?api_key=";
   url += THINGSPEAK_CHAVE;
   if (!pacote.falhouCalor) {
@@ -496,14 +390,12 @@ void enviarAoThingSpeak() {
     url += "&field3=";
     url += String(pacote.indiceCalor, 1);
   }
-  if (!pacote.falhouDistancia) {
-    url += "&field4=";
-    url += String(pacote.distanciaCm);
-  }
   url += "&field5=";
   url += String(pacote.status);
   url += "&field6=";
   url += String(pacote.motivo);
+  url += "&field7=";
+  url += String(pacote.lux);
 
   HTTPClient http;
   http.setConnectTimeout(ESPERA_MAXIMA_HTTP_MS);  // limite para conectar
@@ -519,8 +411,8 @@ void enviarAoThingSpeak() {
   // A mensagem é montada inteira antes de ir para o serial. Ela nunca mostra a chave.
   char mensagem[120];
   if (codigo == 200 && resposta.toInt() > 0) {
-    snprintf(mensagem, sizeof(mensagem), "ThingSpeak: registro %ld gravado (status %d, motivo %d)",
-             resposta.toInt(), pacote.status, pacote.motivo);
+    snprintf(mensagem, sizeof(mensagem), "ThingSpeak: registro %ld gravado (status %d, motivo %d, %ld lux)",
+             resposta.toInt(), pacote.status, pacote.motivo, pacote.lux);
   } else if (codigo == 200) {
     snprintf(mensagem, sizeof(mensagem), "ThingSpeak: o canal recusou o envio (chave errada ou envio rapido demais).");
   } else {
@@ -530,9 +422,7 @@ void enviarAoThingSpeak() {
 }
 
 // Uma volta da tarefa de rede: confere o Wi-Fi e, se já passaram 20 s desde o
-// FIM da última tentativa, tenta enviar. O relógio é marcado depois da tentativa:
-// um pedido lento empurra o próximo para frente, e dois registros nunca ficam
-// a menos de 20 s um do outro.
+// FIM da última tentativa, tenta enviar.
 void cicloDeRede() {
   acompanharWiFi();
   if (millis() - fimUltimaTentativa >= INTERVALO_ENVIO_MS) {
@@ -543,7 +433,6 @@ void cicloDeRede() {
 }
 
 // A tarefa de rede repete o ciclo para sempre, com uma pausa de 100 ms.
-// vTaskDelay é a pausa do FreeRTOS: ela libera o processador para as outras tarefas.
 void tarefaDeRede(void* parametro) {
   for (;;) {
     cicloDeRede();
@@ -556,7 +445,6 @@ void tarefaDeRede(void* parametro) {
 // pedido HTTP lento não atrase o aviso de buraco.
 
 // A mensagem é exatamente este texto? Confere o tamanho e cada letra.
-// (Assim, "buraco" seguido de qualquer coisa, até de um byte zero, não vale.)
 bool mensagemIgual(const byte* conteudo, unsigned int tamanho, const char* texto) {
   return tamanho == strlen(texto) && memcmp(conteudo, texto, tamanho) == 0;
 }
@@ -586,9 +474,7 @@ void aoReceberMensagem(char* topico, byte* conteudo, unsigned int tamanho) {
 void manterMqtt() {
   if (WiFi.status() != WL_CONNECTED) {
     // Sem Wi-Fi, a conexão do MQTT já era. Fecha a conexão aqui no poste (stop),
-    // sem tentar mandar nada ao broker: com a rede fora, essa escrita poderia demorar.
-    // Quando o Wi-Fi voltar, o poste conecta e assina de novo, em vez de ficar numa
-    // conexão morta.
+    // sem tentar mandar nada ao broker. Quando o Wi-Fi voltar, conecta e assina de novo.
     if (mqttConectado) {
       clienteMqtt.stop();
       mqttConectado = false;
@@ -612,9 +498,7 @@ void manterMqtt() {
       linhaNoSerial(mensagem);
       return;
     }
-    if (!mqtt.subscribe(MQTT_TOPICO)) {
-      // subscribe() devolve false quando não conseguiu mandar o pedido de inscrição.
-      // (O true só diz que o pedido saiu; a confirmação do broker vem depois.)
+    if (!mqtt.subscribe(MQTT_TOPICO, MQTT_QOS)) {
       // Conectado, mas sem inscrição, o poste não ouviria nada: encerra e tenta de novo.
       mqtt.disconnect();
       linhaNoSerial("MQTT: nao deu para assinar o topico da camera. Tenta de novo em 5 s.");
@@ -643,9 +527,9 @@ void tarefaDaCamera(void* parametro) {
 // ==================================================================
 
 // Cria a fila do pacote e a tarefa de rede. Se faltar memória para alguma delas,
-// avisa no serial e o poste segue sem envio: sensores, OLED, LED e câmera continuam.
+// avisa no serial e o poste segue sem envio: sensores, LED e câmera continuam.
 bool iniciarEnvio() {
-  filaEnvio = xQueueCreate(1, sizeof(PacoteEnvio));   // a fila de 1 lugar para o pacote
+  filaEnvio = xQueueCreate(1, sizeof(PacoteEnvio));
   if (filaEnvio == NULL) {
     linhaNoSerial("Aviso: sem memoria para a fila do ThingSpeak. O poste segue sem envio.");
     return false;
@@ -655,8 +539,8 @@ bool iniciarEnvio() {
   // Tarefa de rede: 8 KB de memória (pilha), prioridade 1
   if (xTaskCreate(tarefaDeRede, "rede", 8192, NULL, 1, NULL) != pdPASS) {
     linhaNoSerial("Aviso: nao deu para criar a tarefa de rede. O poste segue sem envio.");
-    vQueueDelete(filaEnvio);   // sem a tarefa, ninguém leria a fila: devolve a memória
-    filaEnvio = NULL;          // e o loop() para de guardar pacotes
+    vQueueDelete(filaEnvio);
+    filaEnvio = NULL;
     return false;
   }
   linhaNoSerial("Tarefa de rede ligada: envio ao ThingSpeak a cada 20 s.");
@@ -664,9 +548,9 @@ bool iniciarEnvio() {
 }
 
 // Cria a fila do aviso de buraco e a tarefa da câmera. Se faltar memória, avisa
-// no serial e o poste segue sem câmera: sensores, OLED, LED e envio continuam.
+// no serial e o poste segue sem câmera: sensores, LED e envio continuam.
 bool iniciarCamera() {
-  filaCamera = xQueueCreate(1, sizeof(bool));          // a fila de 1 lugar para o aviso
+  filaCamera = xQueueCreate(1, sizeof(bool));
   if (filaCamera == NULL) {
     linhaNoSerial("Aviso: sem memoria para a fila da camera. O poste segue sem camera.");
     return false;
@@ -679,8 +563,8 @@ bool iniciarCamera() {
   // Tarefa da câmera: 8 KB de memória (pilha), prioridade 1
   if (xTaskCreate(tarefaDaCamera, "camera", 8192, NULL, 1, NULL) != pdPASS) {
     linhaNoSerial("Aviso: nao deu para criar a tarefa da camera. O poste segue sem camera.");
-    vQueueDelete(filaCamera);  // sem a tarefa, ninguém escreveria na fila: devolve a memória
-    filaCamera = NULL;         // e o loop() para de olhar a câmera
+    vQueueDelete(filaCamera);
+    filaCamera = NULL;
     return false;
   }
   linhaNoSerial("Tarefa da camera ligada: ouvindo a API de visao por MQTT.");
@@ -689,33 +573,21 @@ bool iniciarCamera() {
 
 void setup() {
   Serial.begin(115200);
-  pinMode(PINO_TRIG, OUTPUT);
-  pinMode(PINO_ECHO, INPUT);
+  pinMode(PINO_LDR, INPUT);
   pinMode(PINO_LED_VERMELHO, OUTPUT);
   pinMode(PINO_LED_VERDE, OUTPUT);
   apagarLed();
 
   dht.setup(PINO_DHT, DHTesp::DHT22);
 
-  if (!tela.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {  // 0x3C = endereço I2C do OLED
-    Serial.println("Aviso: OLED nao encontrado.");
-  }
-  tela.clearDisplay();
-  tela.setTextColor(SSD1306_WHITE);
-  tela.setTextSize(1);
-  tela.setCursor(0, 0);
-  tela.println("C.E.L.I.A.");
-  tela.println("Iniciando sensores...");
-  tela.display();
-
   // Aqui ainda não há outras tarefas usando o serial: pode escrever aos pedaços.
-  Serial.println("C.E.L.I.A. - modulo Edge iniciado");
-  Serial.print("Confirmacao da calcada: ");
+  Serial.println("C.E.L.I.A. - modulo Edge (luz + calor) iniciado");
+  Serial.print("Confirmacao da luz: ");
   Serial.print(TEMPO_CONFIRMACAO_MS / 1000);
   Serial.println(MODO_DEMONSTRACAO ? " s (modo demonstracao)" : " s");
 
   // Começa a conectar no Wi-Fi sem esperar: se a rede demorar ou faltar,
-  // os sensores, o OLED e o LED funcionam do mesmo jeito.
+  // os sensores e o LED funcionam do mesmo jeito.
   Serial.print("Conectando ao Wi-Fi ");
   Serial.println(WIFI_NOME);
   WiFi.begin(WIFI_NOME, WIFI_SENHA, WIFI_CANAL);
@@ -730,14 +602,14 @@ void setup() {
 }
 
 void loop() {
-  // O loop() cuida só dos sensores, do OLED e do LED: confere o relógio e lê
-  // a cada 5 s, sem delay() longo. O envio ao ThingSpeak fica com a tarefa de
-  // rede, e o MQTT com a tarefa da câmera. As três rodam ao mesmo tempo.
+  // O loop() cuida só dos sensores e do LED: confere o relógio e lê a cada 5 s,
+  // sem delay() longo. O envio ao ThingSpeak fica com a tarefa de rede, e o MQTT
+  // com a tarefa da câmera. As três rodam ao mesmo tempo.
   if (millis() - ultimaLeitura >= INTERVALO_LEITURA_MS) {
     ultimaLeitura = millis();
     atualizarTrecho();
     guardarParaEnvio();
   }
   verCamera();   // aviso de buraco chegou ou venceu? mostra na hora
-  delay(10);  // pequena pausa: deixa a simulação do Wokwi mais rápida
+  delay(10);     // pequena pausa: deixa a simulação do Wokwi mais rápida
 }

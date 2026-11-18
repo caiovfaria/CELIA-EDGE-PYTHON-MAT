@@ -1,75 +1,29 @@
 {
   "version": 1,
-  "author": "C.E.L.I.A. - FIAP GS 2026.2",
+  "author": "C.E.L.I.A. - FIAP GS 2026.2 (Edge: luz + calor)",
   "editor": "wokwi",
   "parts": [
-    { "type": "wokwi-esp32-devkit-v1", "id": "esp", "top": 0, "left": 0, "attrs": {} },
-    {
-      "type": "wokwi-dht22",
-      "id": "dht1",
-      "top": -134.1,
-      "left": -159,
-      "attrs": { "temperature": "26", "humidity": "50" }
-    },
-    {
-      "type": "wokwi-hc-sr04",
-      "id": "ultrasonic1",
-      "top": -142.5,
-      "left": -14.9,
-      "attrs": { "distance": "200" }
-    },
-    {
-      "type": "wokwi-ssd1306",
-      "id": "oled1",
-      "top": -12.6,
-      "left": 192.6,
-      "attrs": { "i2cAddress": "0x3c" }
-    },
-    {
-      "type": "wokwi-rgb-led",
-      "id": "rgb1",
-      "top": 148,
-      "left": 268.1,
-      "attrs": { "common": "cathode" }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r1",
-      "top": 147.95,
-      "left": 172.8,
-      "attrs": { "value": "220" }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r2",
-      "top": 176.75,
-      "left": 172.8,
-      "attrs": { "value": "220" }
-    }
+    {"type": "wokwi-esp32-devkit-v1", "id": "esp", "top": 0, "left": 0, "attrs": {}},
+    {"type": "wokwi-dht22", "id": "dht1", "top": 25, "left": 165, "attrs": {"temperature": "26", "humidity": "50"}},
+    {"type": "wokwi-photoresistor-sensor", "id": "ldr1", "top": 7, "left": -232, "attrs": {"lux": "500"}},
+    {"type": "wokwi-rgb-led", "id": "rgb1", "top": 100, "left": -205, "attrs": {"common": "cathode"}},
+    {"type": "wokwi-resistor", "id": "r1", "top": 72, "left": -112, "attrs": {"value": "220"}},
+    {"type": "wokwi-resistor", "id": "r2", "top": 106, "left": -112, "attrs": {"value": "220"}}
   ],
   "connections": [
-    [ "esp:TX0", "$serialMonitor:RX", "", [] ],
-    [ "esp:RX0", "$serialMonitor:TX", "", [] ],
-
-    [ "dht1:VCC", "esp:3V3", "red", [] ],
-    [ "dht1:GND", "esp:GND.1", "black", [] ],
-    [ "dht1:SDA", "esp:D15", "green", [] ],
-
-    [ "ultrasonic1:VCC", "esp:VIN", "red", [] ],
-    [ "ultrasonic1:GND", "esp:GND.2", "black", [] ],
-    [ "ultrasonic1:TRIG", "esp:D5", "blue", [] ],
-    [ "ultrasonic1:ECHO", "esp:D18", "orange", [] ],
-
-    [ "oled1:VIN", "esp:3V3", "red", [] ],
-    [ "oled1:GND", "esp:GND.1", "black", [] ],
-    [ "oled1:DATA", "esp:D21", "purple", [] ],
-    [ "oled1:CLK", "esp:D22", "gold", [] ],
-
-    [ "esp:D25", "r1:1", "red", [] ],
-    [ "r1:2", "rgb1:R", "red", [] ],
-    [ "esp:D26", "r2:1", "green", [] ],
-    [ "r2:2", "rgb1:G", "green", [] ],
-    [ "rgb1:COM", "esp:GND.1", "black", [] ]
+    ["esp:TX0", "$serialMonitor:RX", "", []],
+    ["esp:RX0", "$serialMonitor:TX", "", []],
+    ["dht1:VCC", "esp:3V3", "red", []],
+    ["dht1:GND", "esp:GND.1", "black", []],
+    ["dht1:SDA", "esp:D15", "green", []],
+    ["ldr1:VCC", "esp:3V3", "red", []],
+    ["ldr1:GND", "esp:GND.2", "black", []],
+    ["ldr1:AO", "esp:D34", "orange", []],
+    ["esp:D25", "r1:2", "red", []],
+    ["r1:1", "rgb1:R", "red", []],
+    ["esp:D26", "r2:2", "green", []],
+    ["r2:1", "rgb1:G", "green", []],
+    ["rgb1:COM", "esp:GND.2", "black", []]
   ],
   "dependencies": {}
 }

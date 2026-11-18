@@ -1,26 +1,55 @@
 /*
-  C.E.L.I.A. – regras de decisão do poste
-  -----------------------------------------
+  C.E.L.I.A. – regras de decisão do poste (luz + calor)
+  -----------------------------------------------------
   Este arquivo só tem "contas e decisões": não lê sensor nem acende LED.
   Por isso ele roda igual no ESP32 e no computador, e foi testado fora do
   Wokwi (tests/teste_logica.cpp) antes de ir para o circuito.
 
-  Os limites vêm da Documentação do Módulo Edge e ainda estão em validação
-  pela equipe: para mudar, troque só as constantes abaixo.
+  Mudança de 18/11/2026: o HC-SR04 (distância na calçada) saiu e entrou o LDR
+  (luminosidade). O calor (DHT22) e a câmera continuam iguais.
+
+  Os limites ainda estão em validação pela equipe: para mudar, troque só as
+  constantes abaixo.
 */
 #pragma once
 #include <stdint.h>   // uint32_t: inteiro sem sinal de 32 bits, o mesmo tamanho do millis() no ESP32
+#include <math.h>     // pow()
 
 // ---------- Limites (mudar aqui se a equipe decidir outros valores) ----------
-const float CALCADA_LIVRE_CM    = 120.0;  // a partir de 120 cm: calçada livre (NBR 9050: faixa livre de 1,20 m)
-const float CALCADA_ESTREITA_CM = 90.0;   // de 90 a 119 cm: estreita; abaixo de 90 cm: bloqueada
-const float CALOR_ATENCAO_C     = 32.0;   // índice de calor a partir de 32 °C: atenção
-const float CALOR_PERIGO_C      = 41.0;   // a partir de 41 °C: perigo (a equipe pode trocar para 39)
+const float CALOR_ATENCAO_C = 32.0;      // índice de calor a partir de 32 °C: atenção
+const float CALOR_PERIGO_C  = 41.0;      // a partir de 41 °C: perigo
+const long  LUZ_ESCURO_LUX  = 10;        // abaixo de 10 lux: rua escura (não dá para ver buraco, degrau, desnível)
+const long  LUZ_SOL_LUX     = 25000;     // a partir de 25.000 lux: sol direto (calçada sem sombra)
+const long  LUZ_MAXIMA_LUX  = 100000;    // teto: o módulo do Wokwi vai até 100.000 lux (sol forte)
 
-// ---------- Situação da calçada ----------
-const int CALCADA_LIVRE     = 0;
-const int CALCADA_ESTREITA  = 1;
-const int CALCADA_BLOQUEADA = 2;
+// ---------- LDR: leitura do ADC -> lux ----------
+// O módulo de luz tem o LDR em série com um resistor de 10 kΩ; o pino AO fica entre os
+// dois. No escuro a resistência do LDR sobe e a tensão no AO também (ADC alto); no claro,
+// a tensão cai (ADC baixo). O ESP32 lê de 0 a 4095 para 0 a 3,3 V.
+// A conversão é a da documentação do Wokwi (wokwi-photoresistor-sensor), trocando 5 V
+// por 3,3 V: rl10 = 50 kΩ (resistência com 10 lux) e gamma = 0,7.
+const float LDR_VCC           = 3.3;
+const float LDR_ADC_MAX       = 4095.0;
+const float LDR_RESISTOR_FIXO = 10000.0;  // o resistor de 10 kΩ do módulo
+const float LDR_RL10_KOHM     = 50.0;     // atributo rl10 do Wokwi
+const float LDR_GAMMA         = 0.7;      // atributo gamma do Wokwi
+
+// Lux inteiros (arredonda PARA BAIXO). O número que vai para o ThingSpeak é o mesmo
+// que decide o status: o que aparece no gráfico é exatamente o que o poste usou.
+inline long luxPeloAdc(int adc) {
+  if (adc <= 0) return LUZ_MAXIMA_LUX;            // tensão zero: claro demais para medir
+  if (adc >= (int)LDR_ADC_MAX) return 0;          // tensão máxima: escuro total
+  float tensao = adc / LDR_ADC_MAX * LDR_VCC;
+  float resistencia = LDR_RESISTOR_FIXO * tensao / (LDR_VCC - tensao);
+  float lux = pow(LDR_RL10_KOHM * 1000.0 * pow(10.0, LDR_GAMMA) / resistencia, 1.0 / LDR_GAMMA);
+  if (lux >= LUZ_MAXIMA_LUX) return LUZ_MAXIMA_LUX;
+  return (long)lux;                                // (long) corta a parte decimal
+}
+
+// ---------- Situação da luz ----------
+const int LUZ_NORMAL = 0;
+const int LUZ_ESCURO = 1;
+const int LUZ_SOL    = 2;
 
 // ---------- Situação do calor ----------
 const int CALOR_NORMAL  = 0;
@@ -33,34 +62,18 @@ const int STATUS_ATENCAO   = 1;  // amarelo
 const int STATUS_EVITE     = 2;  // vermelho
 
 // ---------- Motivo do status (field6 do ThingSpeak) ----------
-const int MOTIVO_NENHUM  = 0;
-const int MOTIVO_CALCADA = 1;
-const int MOTIVO_CALOR   = 2;
-const int MOTIVO_AMBOS   = 3;
-const int MOTIVO_BURACO  = 5;  // buraco visto pela câmera (Etapa 4)
-// O 4 (veículo) foi retirado pela equipe em 12/11: o modelo marcava carro estacionado.
+// Desde 18/11, o motivo 1 é a LUZ (antes, com o HC-SR04, era a calçada).
+const int MOTIVO_NENHUM = 0;
+const int MOTIVO_LUZ    = 1;
+const int MOTIVO_CALOR  = 2;
+const int MOTIVO_AMBOS  = 3;
+const int MOTIVO_BURACO = 5;  // buraco visto pela câmera
 
-// ---------- HC-SR04: tempo do eco -> distância ----------
-// O som vai até o obstáculo e volta; o tempo do eco (ida e volta) é proporcional à
-// distância. Medimos no Wokwi 28 ecos de 50 a 400 cm (edge/evidencias/calibracao_hc_sr04.md):
-// em média 58,8 µs por centímetro (som a ~340 m/s), com variação de até ±3 µs.
-// A regra da calçada vale para centímetros INTEIROS e arredonda PARA BAIXO: só conta
-// 120 cm quando a medida chega a 120 cm completos. Na dúvida, o trecho fica na faixa pior.
-// A folga de 0,08 cm (0,8 mm) cobre a maior falta medida no simulador (0,054 cm, ~3 µs)
-// com um pouco de sobra: sem ela, 119 cm no Wokwi às vezes virava 118.
-const float US_POR_CM = 58.8;
-const float FOLGA_ECO_CM = 0.08;
-
-inline float distanciaPeloEco(uint32_t duracaoUs) {
-  float cm = duracaoUs / US_POR_CM;
-  return (float)(long)(cm + FOLGA_ECO_CM);   // (long) corta a parte decimal = arredonda para baixo
-}
-
-// Classifica a calçada pela distância livre medida pelo HC-SR04.
-inline int classificarCalcada(float distanciaCm) {
-  if (distanciaCm >= CALCADA_LIVRE_CM) return CALCADA_LIVRE;
-  if (distanciaCm >= CALCADA_ESTREITA_CM) return CALCADA_ESTREITA;
-  return CALCADA_BLOQUEADA;
+// Classifica a luz pelos lux medidos pelo LDR.
+inline int classificarLuz(long lux) {
+  if (lux < LUZ_ESCURO_LUX) return LUZ_ESCURO;
+  if (lux >= LUZ_SOL_LUX) return LUZ_SOL;
+  return LUZ_NORMAL;
 }
 
 // Classifica o calor pelo índice de calor (sensação térmica) em °C.
@@ -70,37 +83,43 @@ inline int classificarCalor(float indiceCalorC) {
   return CALOR_NORMAL;
 }
 
-// Junta calçada e calor no status final (tabela "Status final do trecho" da documentação).
-inline int calcularStatus(int calcada, int calor) {
-  if (calcada == CALCADA_BLOQUEADA) return STATUS_EVITE;           // bloqueada + qualquer calor
-  if (calcada == CALCADA_ESTREITA) {
-    if (calor == CALOR_PERIGO) return STATUS_EVITE;                // estreita + perigo
-    return STATUS_ATENCAO;                                         // estreita + normal ou atenção
+// Junta luz e calor no status final:
+//
+//                 | calor normal | calor atenção | calor perigo
+//   escuro        | ATENÇÃO (1)  | ATENÇÃO (3)   | ATENÇÃO (3)
+//   luz normal    | ACESSÍVEL (0)| ATENÇÃO (2)   | ATENÇÃO (2)
+//   sol direto    | ACESSÍVEL (0)| EVITE (3)     | EVITE (3)
+//
+// (entre parênteses, o motivo). O sol sozinho não piora nada; com calor, piora:
+// sol direto + calor = EVITE. O calor sozinho fica em ATENÇÃO.
+inline int calcularStatus(int luz, int calor) {
+  if (calor == CALOR_NORMAL) {
+    return luz == LUZ_ESCURO ? STATUS_ATENCAO : STATUS_ACESSIVEL;
   }
-  // calçada livre
-  if (calor == CALOR_NORMAL) return STATUS_ACESSIVEL;              // livre + normal
-  return STATUS_ATENCAO;                                           // livre + atenção ou perigo
+  return luz == LUZ_SOL ? STATUS_EVITE : STATUS_ATENCAO;
 }
 
-// Diz o que deixou o trecho pior que "acessível": a calçada, o calor ou os dois.
-inline int calcularMotivo(int calcada, int calor) {
-  bool culpaCalcada = (calcada != CALCADA_LIVRE);
+// Diz o que deixou o trecho pior que "acessível": a luz, o calor ou os dois.
+// A luz só tem culpa quando ela piorou o status: escuro sempre; sol só junto com calor.
+inline int calcularMotivo(int luz, int calor) {
   bool culpaCalor = (calor != CALOR_NORMAL);
-  if (culpaCalcada && culpaCalor) return MOTIVO_AMBOS;
-  if (culpaCalcada) return MOTIVO_CALCADA;
+  bool culpaLuz = (luz == LUZ_ESCURO) || (luz == LUZ_SOL && culpaCalor);
+  if (culpaLuz && culpaCalor) return MOTIVO_AMBOS;
+  if (culpaLuz) return MOTIVO_LUZ;
   if (culpaCalor) return MOTIVO_CALOR;
   return MOTIVO_NENHUM;
 }
 
-// ---------- Confirmação da calçada ----------
-// Uma mudança na calçada só vale depois de aparecer em leituras seguidas por um
-// tempo mínimo (1 minuto na documentação). Assim, uma pessoa passando na frente
-// do sensor não deixa o trecho vermelho, e um carro parado deixa.
+// ---------- Confirmação da luz ----------
+// Uma mudança na luz só vale depois de aparecer em leituras seguidas por um tempo
+// mínimo (1 minuto; 15 s no modo demonstração). Assim, a sombra de um ônibus ou o
+// farol de um carro passando não mudam o trecho, e um poste de luz apagado muda.
+// (Antes de 18/11, o mesmo confirmador servia para a calçada.)
 struct Confirmador {
-  bool iniciado = false;            // a primeira leitura vale na hora
-  int confirmado = CALCADA_LIVRE;   // situação que está valendo
-  int candidato = CALCADA_LIVRE;    // situação nova que está aparecendo
-  uint32_t desde = 0;               // quando o candidato apareceu (ms)
+  bool iniciado = false;          // a primeira leitura vale na hora
+  int confirmado = LUZ_NORMAL;    // situação que está valendo
+  int candidato = LUZ_NORMAL;     // situação nova que está aparecendo
+  uint32_t desde = 0;             // quando o candidato apareceu (ms)
 };
 
 // Recebe a leitura atual e devolve a situação que deve valer.
@@ -123,13 +142,6 @@ inline int atualizarConfirmacao(Confirmador &c, int leitura, uint32_t agoraMs, u
   return c.confirmado;
 }
 
-// Se o sensor falhou nesta leitura, a mudança em andamento é cancelada: a contagem
-// só recomeça na próxima leitura válida. Assim, um eco solto seguido de falhas
-// nunca confirma uma mudança (por exemplo, liberar um trecho bloqueado).
-inline void cancelarConfirmacao(Confirmador &c) {
-  c.candidato = c.confirmado;
-}
-
 // Quanto falta (ms) para confirmar a mudança em andamento; 0 se não há mudança.
 inline uint32_t msParaConfirmar(const Confirmador &c, uint32_t agoraMs, uint32_t tempoConfirmacaoMs) {
   if (c.candidato == c.confirmado) return 0;
@@ -138,14 +150,13 @@ inline uint32_t msParaConfirmar(const Confirmador &c, uint32_t agoraMs, uint32_t
   return tempoConfirmacaoMs - passou;
 }
 
-// ---------- Câmera (Etapa 4) ----------
-// A foto de um usuário vai para a API de visão, que avisa por MQTT "livre" ou "buraco".
-// Um "buraco" vale por um tempo (10 min na documentação, ainda em proposta). Enquanto
-// vale, o trecho fica em EVITE com motivo 5, qualquer que seja a calçada e o calor.
-// Um "livre" não muda nada: vale a regra dos sensores (e não apaga um buraco que ainda vale).
+// ---------- Câmera ----------
+// A câmera do poste (ESP32-CAM, pasta camera/) manda uma foto a cada 20 s para a API de
+// visão, que avisa por MQTT "livre" ou "buraco". Um "buraco" vale por um tempo (10 min;
+// 1 min no modo demonstração). Enquanto vale, o trecho fica em EVITE com motivo 5,
+// qualquer que seja a luz e o calor. Um "livre" não muda nada.
 
 // O aviso de buraco ainda vale? "desdeMs" é quando ele chegou.
-// Continua certo quando millis() volta a zero, como no confirmador.
 inline bool buracoValendo(bool recebeuBuraco, uint32_t desdeMs, uint32_t agoraMs, uint32_t validadeMs) {
   return recebeuBuraco && (agoraMs - desdeMs < validadeMs);
 }
@@ -158,7 +169,7 @@ inline int motivoComCamera(int motivoSensores, bool buraco) {
   return buraco ? MOTIVO_BURACO : motivoSensores;
 }
 
-// ---------- Textos para o OLED e o Serial (sem acento: a fonte do OLED não tem) ----------
+// ---------- Textos para o monitor serial (sem acento) ----------
 inline const char* nomeStatus(int status) {
   if (status == STATUS_ACESSIVEL) return "ACESSIVEL";
   if (status == STATUS_ATENCAO) return "ATENCAO";
@@ -166,17 +177,17 @@ inline const char* nomeStatus(int status) {
 }
 
 inline const char* nomeMotivo(int motivo) {
-  if (motivo == MOTIVO_CALCADA) return "calcada";
+  if (motivo == MOTIVO_LUZ) return "luz";
   if (motivo == MOTIVO_CALOR) return "calor";
-  if (motivo == MOTIVO_AMBOS) return "calcada+calor";
+  if (motivo == MOTIVO_AMBOS) return "luz+calor";
   if (motivo == MOTIVO_BURACO) return "buraco";
   return "nenhum";
 }
 
-inline const char* nomeCalcada(int calcada) {
-  if (calcada == CALCADA_LIVRE) return "livre";
-  if (calcada == CALCADA_ESTREITA) return "estreita";
-  return "bloqueada";
+inline const char* nomeLuz(int luz) {
+  if (luz == LUZ_ESCURO) return "escuro";
+  if (luz == LUZ_SOL) return "sol direto";
+  return "normal";
 }
 
 inline const char* nomeCalor(int calor) {

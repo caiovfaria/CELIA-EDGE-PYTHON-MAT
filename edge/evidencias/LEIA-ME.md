@@ -1,5 +1,7 @@
 # Evidências da Etapa 1 (teste no Wokwi, 11/11/2026)
 
+> **Versão anterior do poste.** As evidências desta pasta e das subpastas `etapa2/`, `etapa4/`, `leituras_15-11/` e `teste_final/` são de 11 a 15/11, quando o poste tinha HC-SR04 (distância na calçada) e OLED. Em 18/11, esses dois saíram e entrou o LDR (luz). As evidências do poste atual estão em [`luz_calor_18-11/`](luz_calor_18-11/LEIA-ME.md). O código da versão anterior fica no histórico do git (até o commit `b47342a`).
+
 Prints tirados no Wokwi com o código desta pasta, mudando os sensores pelos controles da simulação.
 
 ## Depois da revisão do Codex (12/11)

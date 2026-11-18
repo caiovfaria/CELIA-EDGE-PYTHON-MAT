@@ -1,5 +1,5 @@
 /*
-  Testes das regras de decisão do poste (edge/celia_logica.h).
+  Testes das regras de decisão do poste (edge/celia_logica.h): luz + calor.
   Roda no computador, sem Wokwi:
       g++ -std=c++17 -Wall -o teste_logica tests/teste_logica.cpp && ./teste_logica
 */
@@ -16,8 +16,16 @@ void confere(bool ok, const char* descricao) {
   else { falhou++; printf("FALHOU: %s\n", descricao); }
 }
 
+// O que o Wokwi faz: com "lux" no módulo, calcula a resistência do LDR e a tensão no AO
+// (LDR em série com 10 kΩ, módulo ligado em 3,3 V), e o ESP32 lê de 0 a 4095.
+int adcDoWokwi(double lux) {
+  double r = 50000.0 * pow(10.0, 0.7) / pow(lux, 0.7);
+  double v = 3.3 * r / (r + 10000.0);
+  return (int)lround(v / 3.3 * 4095.0);
+}
+
 // Cópia da fórmula de índice de calor da biblioteca DHTesp (computeHeatIndex),
-// usada só para conferir os valores do roteiro de demonstração.
+// usada só para conferir os valores do roteiro de demonstração do README.
 float indiceCalorDHTesp(float tempC, float umidade) {
   float t = tempC * 1.8f + 32;
   float hi = 0.5f * (t + 61.0f + ((t - 68.0f) * 1.2f) + (umidade * 0.094f));
@@ -35,217 +43,126 @@ float indiceCalorDHTesp(float tempC, float umidade) {
 }
 
 int main() {
-  // 1. Faixas da calçada, incluindo as bordas
-  confere(classificarCalcada(400) == CALCADA_LIVRE, "400 cm = livre");
-  confere(classificarCalcada(120) == CALCADA_LIVRE, "120 cm = livre (borda)");
-  confere(classificarCalcada(119.9f) == CALCADA_ESTREITA, "119,9 cm = estreita");
-  confere(classificarCalcada(90) == CALCADA_ESTREITA, "90 cm = estreita (borda)");
-  confere(classificarCalcada(89.9f) == CALCADA_BLOQUEADA, "89,9 cm = bloqueada");
-  confere(classificarCalcada(2) == CALCADA_BLOQUEADA, "2 cm = bloqueada");
+  char d[160];
 
-  // 2. Faixas do calor, incluindo as bordas e o antigo intervalo 40–41 °C
-  confere(classificarCalor(25) == CALOR_NORMAL, "25 °C = normal");
-  confere(classificarCalor(31.9f) == CALOR_NORMAL, "31,9 °C = normal");
-  confere(classificarCalor(32) == CALOR_ATENCAO, "32 °C = atenção (borda)");
-  confere(classificarCalor(40.5f) == CALOR_ATENCAO, "40,5 °C = atenção (sem buraco entre 40 e 41)");
-  confere(classificarCalor(40.99f) == CALOR_ATENCAO, "40,99 °C = atenção");
-  confere(classificarCalor(41) == CALOR_PERIGO, "41 °C = perigo (borda)");
-  confere(classificarCalor(55) == CALOR_PERIGO, "55 °C = perigo");
+  // 1. Conversão ADC -> lux: pontas
+  confere(luxPeloAdc(0) == LUZ_MAXIMA_LUX, "ADC 0 (tensao zero) = 100000 lux (teto)");
+  confere(luxPeloAdc(-5) == LUZ_MAXIMA_LUX, "ADC negativo = teto (nao quebra a conta)");
+  confere(luxPeloAdc(4095) == 0, "ADC 4095 (tensao maxima) = 0 lux (escuro total)");
+  confere(luxPeloAdc(5000) == 0, "ADC acima de 4095 = 0 lux (nao quebra a conta)");
+  confere(luxPeloAdc(1) == LUZ_MAXIMA_LUX, "ADC 1 = teto de 100000 lux");
 
-  // 3. Tabela "Status final do trecho" da documentação (as 9 combinações)
-  const int esperado[3][3] = {
-    // calor:     normal            atenção           perigo
-    /* livre */  {STATUS_ACESSIVEL, STATUS_ATENCAO,   STATUS_ATENCAO},
-    /* estreita*/{STATUS_ATENCAO,   STATUS_ATENCAO,   STATUS_EVITE},
-    /* bloq.  */ {STATUS_EVITE,     STATUS_EVITE,     STATUS_EVITE},
+  // 2. Ida e volta: o lux escolhido no Wokwi volta perto do mesmo valor depois do ADC.
+  //    Tolerância: até 1 lux abaixo de 100 lux (o valor é inteiro); 2% até 10.000 lux; 3% acima
+  //    disso, porque no sol cada passo do ADC vale centenas de lux.
+  const double luxes[] = {1, 5, 9, 11, 50, 100, 500, 1000, 5000, 10000, 20000, 30000, 50000, 90000};
+  for (double l : luxes) {
+    long volta = luxPeloAdc(adcDoWokwi(l));
+    // abaixo de 100 lux o valor inteiro pode perder até 1 lux (arredonda para baixo)
+    bool perto = l < 100 ? fabs(volta - l) <= 1.0 : fabs(volta - l) / l <= (l < 10000 ? 0.02 : 0.03);
+    snprintf(d, sizeof d, "%g lux no Wokwi -> ADC %d -> %ld lux", l, adcDoWokwi(l), volta);
+    confere(perto, d);
+  }
+  confere(luxPeloAdc(adcDoWokwi(100000)) == 100000, "100000 lux no Wokwi -> 100000 lux (teto)");
+
+  // 3. Quanto mais alto o ADC, mais escuro: a conversão nunca "volta" (nunca aumenta)
+  bool nuncaAumenta = true;
+  for (int adc = 1; adc < 4095; adc++) if (luxPeloAdc(adc + 1) > luxPeloAdc(adc)) nuncaAumenta = false;
+  confere(nuncaAumenta, "ADC maior = lux menor ou igual, em toda a faixa 1..4095");
+
+  // 4. Faixas da luz, com as bordas
+  confere(classificarLuz(0) == LUZ_ESCURO, "0 lux = escuro");
+  confere(classificarLuz(9) == LUZ_ESCURO, "9 lux = escuro");
+  confere(classificarLuz(10) == LUZ_NORMAL, "10 lux = normal (borda)");
+  confere(classificarLuz(500) == LUZ_NORMAL, "500 lux = normal");
+  confere(classificarLuz(24999) == LUZ_NORMAL, "24999 lux = normal");
+  confere(classificarLuz(25000) == LUZ_SOL, "25000 lux = sol direto (borda)");
+  confere(classificarLuz(100000) == LUZ_SOL, "100000 lux = sol direto");
+
+  // 5. Bordas passando pelo ADC: o número que decide é o mesmo que vai para o ThingSpeak
+  confere(luxPeloAdc(3412) == 10 && classificarLuz(luxPeloAdc(3412)) == LUZ_NORMAL, "ADC 3412 = 10 lux = normal");
+  confere(luxPeloAdc(3413) == 9 && classificarLuz(luxPeloAdc(3413)) == LUZ_ESCURO, "ADC 3413 = 9 lux = escuro (um passo do ADC acima)");
+  confere(classificarLuz(luxPeloAdc(84)) == LUZ_NORMAL && classificarLuz(luxPeloAdc(83)) == LUZ_SOL,
+          "perto de 25000 lux: ADC 84 = normal, ADC 83 = sol direto");
+  snprintf(d, sizeof d, "um passo do ADC perto de 25000 lux vale %ld lux (por isso a demonstracao usa 50000)", luxPeloAdc(83) - luxPeloAdc(84));
+  confere(luxPeloAdc(83) - luxPeloAdc(84) < 1000, d);
+
+  // 6. Valores do roteiro de demonstração (README): cada um longe da borda
+  confere(classificarLuz(luxPeloAdc(adcDoWokwi(5))) == LUZ_ESCURO, "roteiro: 5 lux no Wokwi = escuro");
+  confere(classificarLuz(luxPeloAdc(adcDoWokwi(500))) == LUZ_NORMAL, "roteiro: 500 lux no Wokwi = normal");
+  confere(classificarLuz(luxPeloAdc(adcDoWokwi(50000))) == LUZ_SOL, "roteiro: 50000 lux no Wokwi = sol direto");
+  confere(classificarCalor(indiceCalorDHTesp(26, 50)) == CALOR_NORMAL, "roteiro: 26 C e 50% = calor normal");
+  confere(classificarCalor(indiceCalorDHTesp(33, 50)) == CALOR_ATENCAO, "roteiro: 33 C e 50% = calor em atencao (IC ~36 C)");
+  confere(classificarCalor(indiceCalorDHTesp(36, 50)) == CALOR_PERIGO, "roteiro: 36 C e 50% = calor em perigo (IC ~43 C)");
+
+  // 7. Faixas do calor
+  confere(classificarCalor(31.9) == CALOR_NORMAL, "31,9 C = normal");
+  confere(classificarCalor(32.0) == CALOR_ATENCAO, "32 C = atencao (borda)");
+  confere(classificarCalor(40.9) == CALOR_ATENCAO, "40,9 C = atencao");
+  confere(classificarCalor(41.0) == CALOR_PERIGO, "41 C = perigo (borda)");
+
+  // 8. Tabela inteira: 3 situações de luz x 3 de calor (status e motivo)
+  struct Linha { int luz, calor, status, motivo; const char* nome; };
+  const Linha tabela[] = {
+    {LUZ_ESCURO, CALOR_NORMAL,  STATUS_ATENCAO,   MOTIVO_LUZ,    "escuro + calor normal"},
+    {LUZ_ESCURO, CALOR_ATENCAO, STATUS_ATENCAO,   MOTIVO_AMBOS,  "escuro + calor atencao"},
+    {LUZ_ESCURO, CALOR_PERIGO,  STATUS_ATENCAO,   MOTIVO_AMBOS,  "escuro + calor perigo"},
+    {LUZ_NORMAL, CALOR_NORMAL,  STATUS_ACESSIVEL, MOTIVO_NENHUM, "luz normal + calor normal"},
+    {LUZ_NORMAL, CALOR_ATENCAO, STATUS_ATENCAO,   MOTIVO_CALOR,  "luz normal + calor atencao"},
+    {LUZ_NORMAL, CALOR_PERIGO,  STATUS_ATENCAO,   MOTIVO_CALOR,  "luz normal + calor perigo"},
+    {LUZ_SOL,    CALOR_NORMAL,  STATUS_ACESSIVEL, MOTIVO_NENHUM, "sol direto + calor normal"},
+    {LUZ_SOL,    CALOR_ATENCAO, STATUS_EVITE,     MOTIVO_AMBOS,  "sol direto + calor atencao"},
+    {LUZ_SOL,    CALOR_PERIGO,  STATUS_EVITE,     MOTIVO_AMBOS,  "sol direto + calor perigo"},
   };
-  for (int c = 0; c < 3; c++)
-    for (int k = 0; k < 3; k++) {
-      char d[80];
-      snprintf(d, sizeof d, "status calçada %s + calor %s", nomeCalcada(c), nomeCalor(k));
-      confere(calcularStatus(c, k) == esperado[c][k], d);
-    }
+  for (const Linha& t : tabela) {
+    snprintf(d, sizeof d, "%s = status %d, motivo %d", t.nome, t.status, t.motivo);
+    confere(calcularStatus(t.luz, t.calor) == t.status && calcularMotivo(t.luz, t.calor) == t.motivo, d);
+  }
+  // o motivo só é 0 quando o status é acessível (e vice-versa)
+  bool coerente = true;
+  for (const Linha& t : tabela)
+    if ((calcularStatus(t.luz, t.calor) == STATUS_ACESSIVEL) != (calcularMotivo(t.luz, t.calor) == MOTIVO_NENHUM)) coerente = false;
+  confere(coerente, "motivo 0 se e somente se o status e acessivel");
+  // os números de status e motivo continuam dentro do que a API aceita (status 0-2, motivo 0-5)
+  confere(STATUS_ACESSIVEL == 0 && STATUS_ATENCAO == 1 && STATUS_EVITE == 2, "status 0, 1, 2 (os mesmos do contrato com o app)");
+  confere(MOTIVO_LUZ == 1 && MOTIVO_CALOR == 2 && MOTIVO_AMBOS == 3 && MOTIVO_BURACO == 5, "motivos 1 luz, 2 calor, 3 ambos, 5 buraco");
 
-  // 4. Motivo
-  confere(calcularMotivo(CALCADA_LIVRE, CALOR_NORMAL) == MOTIVO_NENHUM, "motivo: nenhum");
-  confere(calcularMotivo(CALCADA_BLOQUEADA, CALOR_NORMAL) == MOTIVO_CALCADA, "motivo: calçada");
-  confere(calcularMotivo(CALCADA_LIVRE, CALOR_PERIGO) == MOTIVO_CALOR, "motivo: calor");
-  confere(calcularMotivo(CALCADA_ESTREITA, CALOR_ATENCAO) == MOTIVO_AMBOS, "motivo: calçada e calor");
-  for (int c = 0; c < 3; c++)
-    for (int k = 0; k < 3; k++) {
-      bool acessivel = calcularStatus(c, k) == STATUS_ACESSIVEL;
-      bool semMotivo = calcularMotivo(c, k) == MOTIVO_NENHUM;
-      confere(acessivel == semMotivo, "motivo 'nenhum' só quando o trecho é acessível");
-    }
+  // 9. Buraco da câmera: manda em tudo; um aviso velho não vale mais
+  for (const Linha& t : tabela) {
+    snprintf(d, sizeof d, "buraco + %s = EVITE, motivo 5", t.nome);
+    confere(statusComCamera(calcularStatus(t.luz, t.calor), true) == STATUS_EVITE
+            && motivoComCamera(calcularMotivo(t.luz, t.calor), true) == MOTIVO_BURACO, d);
+  }
+  confere(statusComCamera(STATUS_ATENCAO, false) == STATUS_ATENCAO && motivoComCamera(MOTIVO_LUZ, false) == MOTIVO_LUZ, "sem buraco: vale a regra dos sensores");
+  confere(buracoValendo(true, 1000, 60999, 60000), "buraco com 59,999 s: ainda vale");
+  confere(!buracoValendo(true, 1000, 61000, 60000), "buraco com 60 s: venceu");
+  confere(!buracoValendo(false, 1000, 2000, 60000), "sem aviso: nao vale");
+  confere(buracoValendo(true, 0xFFFFF000u, 0x00001000u, 60000), "buraco vale certo quando millis() volta a zero");
 
-  // 5. Confirmação de 1 minuto (leituras a cada 5 s)
-  {
-    const uint32_t T = 60000;
-    Confirmador c;
-    confere(atualizarConfirmacao(c, CALCADA_LIVRE, 0, T) == CALCADA_LIVRE, "primeira leitura vale na hora");
-    // pessoa passando: bloqueada numa leitura e livre na seguinte
-    confere(atualizarConfirmacao(c, CALCADA_BLOQUEADA, 5000, T) == CALCADA_LIVRE, "pessoa passando não muda (5 s)");
-    confere(atualizarConfirmacao(c, CALCADA_LIVRE, 10000, T) == CALCADA_LIVRE, "pessoa passou: continua livre");
-    confere(msParaConfirmar(c, 10000, T) == 0, "sem mudança pendente depois que a pessoa passou");
-    // carro estaciona em t = 15 s
-    uint32_t t = 15000;
-    confere(atualizarConfirmacao(c, CALCADA_BLOQUEADA, t, T) == CALCADA_LIVRE, "carro: ainda livre no início");
-    confere(msParaConfirmar(c, t, T) == 60000, "faltam 60 s");
-    for (t = 20000; t < 75000; t += 5000)
-      confere(atualizarConfirmacao(c, CALCADA_BLOQUEADA, t, T) == CALCADA_LIVRE, "carro: ainda livre antes de 1 min");
-    confere(msParaConfirmar(c, 70000, T) == 5000, "faltam 5 s em t = 70 s");
-    confere(atualizarConfirmacao(c, CALCADA_BLOQUEADA, 75000, T) == CALCADA_BLOQUEADA, "carro: bloqueada após 1 min");
-    // carro sai: precisa de 1 min livre para liberar
-    confere(atualizarConfirmacao(c, CALCADA_LIVRE, 80000, T) == CALCADA_BLOQUEADA, "carro saiu: ainda bloqueada");
-    confere(atualizarConfirmacao(c, CALCADA_LIVRE, 135000, T) == CALCADA_BLOQUEADA, "ainda bloqueada aos 55 s");
-    confere(atualizarConfirmacao(c, CALCADA_LIVRE, 140000, T) == CALCADA_LIVRE, "liberada após 1 min livre");
-  }
-  {
-    // Modo demonstração (15 s) e troca de candidato no meio da contagem
-    const uint32_t T = 15000;
-    Confirmador c;
-    atualizarConfirmacao(c, CALCADA_LIVRE, 0, T);
-    atualizarConfirmacao(c, CALCADA_ESTREITA, 5000, T);
-    atualizarConfirmacao(c, CALCADA_BLOQUEADA, 10000, T);  // mudou de novo: recomeça a contar
-    confere(atualizarConfirmacao(c, CALCADA_BLOQUEADA, 20000, T) == CALCADA_LIVRE, "demo: recomeçou a contar em t = 10 s");
-    confere(atualizarConfirmacao(c, CALCADA_BLOQUEADA, 25000, T) == CALCADA_BLOQUEADA, "demo: confirma 15 s depois");
-  }
-  {
-    // O relógio do ESP32 (millis) volta a zero depois de ~49 dias: a conta continua certa.
-    // Os tempos são uint32_t (32 bits, como no ESP32), então a soma abaixo passa do
-    // limite e volta a contar do zero de verdade, também no computador.
-    const uint32_t T = 60000;
-    Confirmador c;
-    const uint32_t quaseFim = 0xFFFFFFFFu - 20000;
-    atualizarConfirmacao(c, CALCADA_LIVRE, quaseFim, T);
-    const uint32_t inicio = quaseFim + 5000;               // ainda antes do limite
-    atualizarConfirmacao(c, CALCADA_BLOQUEADA, inicio, T);
-    const uint32_t meio = inicio + 30000;                  // já passou do limite
-    confere(meio < inicio, "o relógio realmente voltou a zero no teste");
-    confere(msParaConfirmar(c, meio, T) == 30000, "tempo restante certo depois de voltar a zero");
-    confere(atualizarConfirmacao(c, CALCADA_BLOQUEADA, meio, T) == CALCADA_LIVRE, "ainda não confirmou na metade");
-    confere(atualizarConfirmacao(c, CALCADA_BLOQUEADA, inicio + 59999, T) == CALCADA_LIVRE, "1 ms antes do tempo: não confirma");
-    confere(atualizarConfirmacao(c, CALCADA_BLOQUEADA, inicio + 60000, T) == CALCADA_BLOQUEADA, "no instante exato: confirma (depois do zero)");
-  }
-  {
-    // Sensor sem eco: a mudança em andamento é cancelada e recomeça na próxima leitura válida
-    const uint32_t T = 15000;
-    Confirmador c;
-    atualizarConfirmacao(c, CALCADA_LIVRE, 0, T);
-    for (uint32_t t = 5000; t <= 20000; t += 5000) atualizarConfirmacao(c, CALCADA_BLOQUEADA, t, T);
-    confere(c.confirmado == CALCADA_BLOQUEADA, "falha: trecho começa bloqueado");
-    // um eco solto de calçada livre, seguido de falhas por 30 s
-    atualizarConfirmacao(c, CALCADA_LIVRE, 25000, T);
-    confere(msParaConfirmar(c, 25000, T) == 15000, "falha: eco livre começa a contar");
-    for (int i = 0; i < 6; i++) cancelarConfirmacao(c);   // 6 leituras sem eco (30 s)
-    confere(c.confirmado == CALCADA_BLOQUEADA, "falha: eco solto + falhas não liberam o trecho");
-    confere(msParaConfirmar(c, 55000, T) == 0, "falha: nenhuma mudança pendente depois das falhas");
-    // o eco volta: a contagem recomeça do zero
-    confere(atualizarConfirmacao(c, CALCADA_LIVRE, 60000, T) == CALCADA_BLOQUEADA, "falha: eco voltou, recomeça a contar");
-    confere(atualizarConfirmacao(c, CALCADA_LIVRE, 70000, T) == CALCADA_BLOQUEADA, "falha: ainda não liberou 10 s depois");
-    confere(atualizarConfirmacao(c, CALCADA_LIVRE, 75000, T) == CALCADA_LIVRE, "falha: libera 15 s depois do eco voltar");
-  }
+  // 10. Confirmação da luz
+  Confirmador c;
+  confere(atualizarConfirmacao(c, LUZ_NORMAL, 0, 15000) == LUZ_NORMAL, "primeira leitura vale na hora");
+  confere(atualizarConfirmacao(c, LUZ_ESCURO, 5000, 15000) == LUZ_NORMAL, "escureceu: ainda nao confirmou");
+  confere(msParaConfirmar(c, 10000, 15000) == 10000, "faltam 10 s para confirmar");
+  confere(atualizarConfirmacao(c, LUZ_ESCURO, 15000, 15000) == LUZ_NORMAL, "10 s escuro: ainda normal");
+  confere(atualizarConfirmacao(c, LUZ_ESCURO, 20000, 15000) == LUZ_ESCURO, "15 s escuro: confirmou escuro");
+  confere(msParaConfirmar(c, 20000, 15000) == 0, "confirmado: nao falta nada");
+  confere(atualizarConfirmacao(c, LUZ_NORMAL, 25000, 15000) == LUZ_ESCURO, "farol passou (luz normal): ainda escuro");
+  confere(atualizarConfirmacao(c, LUZ_ESCURO, 30000, 15000) == LUZ_ESCURO && msParaConfirmar(c, 30000, 15000) == 0,
+          "o farol foi embora antes do tempo: a mudanca e cancelada");
+  confere(atualizarConfirmacao(c, LUZ_NORMAL, 35000, 15000) == LUZ_ESCURO, "poste acendeu: comeca a contar");
+  confere(atualizarConfirmacao(c, LUZ_SOL, 40000, 15000) == LUZ_ESCURO, "trocou de novo (sol): recomeca a contar");
+  confere(msParaConfirmar(c, 40000, 15000) == 15000, "a contagem recomecou do zero");
+  Confirmador v;
+  atualizarConfirmacao(v, LUZ_NORMAL, 0xFFFFE000u, 15000);
+  atualizarConfirmacao(v, LUZ_ESCURO, 0xFFFFF000u, 15000);
+  confere(atualizarConfirmacao(v, LUZ_ESCURO, 0x00003000u, 15000) == LUZ_ESCURO, "confirmacao certa quando millis() volta a zero");
 
-  // Conversão do eco do HC-SR04 (58,8 µs por cm, medido no Wokwi; cm inteiros, para baixo, folga de 0,08 cm)
-  {
-    // os 28 ecos medidos no Wokwi (edge/evidencias/calibracao_hc_sr04.md) dão a distância escolhida
-    struct Eco { int cm; uint32_t us; };
-    const Eco medidos[] = {
-      {50, 2941}, {50, 2939}, {50, 2941}, {50, 2939},
-      {89, 5231}, {89, 5236}, {89, 5231}, {89, 5236},
-      {90, 5291}, {90, 5293}, {90, 5291},
-      {119, 6994}, {119, 6996}, {119, 6997}, {119, 6996}, {119, 6997}, {119, 6996},
-      {120, 7058}, {120, 7059}, {120, 7058}, {120, 7056},
-      {200, 11763}, {200, 11761}, {200, 11763},
-      {400, 23525}, {400, 23523}, {400, 23525}, {400, 23523},
-    };
-    int erros = 0;
-    for (const Eco& e : medidos) if ((int)distanciaPeloEco(e.us) != e.cm) erros++;
-    confere(erros == 0, "os 28 ecos medidos no Wokwi dão a distância escolhida no simulador");
-  }
-  // pulsos consecutivos na borda dos 120 cm (120 cm = 7056 µs)
-  confere(distanciaPeloEco(7050) == 119, "7050 µs (119,898 cm) = 119");
-  confere(distanciaPeloEco(7051) == 119, "7051 µs (119,915 cm) = 119");
-  confere(distanciaPeloEco(7052) == 120, "7052 µs (119,932 cm, dentro da folga de 0,08) = 120");
-  confere(distanciaPeloEco(7056) == 120, "7056 µs (120,000 cm) = 120");
-  confere(classificarCalcada(distanciaPeloEco(7051)) == CALCADA_ESTREITA, "7051 µs = estreita");
-  confere(classificarCalcada(distanciaPeloEco(7052)) == CALCADA_LIVRE, "7052 µs = livre");
-  confere(classificarCalcada(distanciaPeloEco(7032)) == CALCADA_ESTREITA, "119,6 cm (7032 µs) = estreita: só 120 completos é livre");
-  // pulsos consecutivos na borda dos 90 cm (90 cm = 5292 µs)
-  confere(distanciaPeloEco(5286) == 89, "5286 µs (89,898 cm) = 89");
-  confere(distanciaPeloEco(5287) == 89, "5287 µs (89,915 cm) = 89");
-  confere(distanciaPeloEco(5288) == 90, "5288 µs (89,932 cm, dentro da folga de 0,08) = 90");
-  confere(distanciaPeloEco(5292) == 90, "5292 µs (90,000 cm) = 90");
-  confere(classificarCalcada(distanciaPeloEco(5287)) == CALCADA_BLOQUEADA, "5287 µs = bloqueada");
-  confere(classificarCalcada(distanciaPeloEco(5288)) == CALCADA_ESTREITA, "5288 µs = estreita");
-  confere(classificarCalcada(distanciaPeloEco(5268)) == CALCADA_BLOQUEADA, "89,6 cm (5268 µs) = bloqueada: só 90 completos é estreita");
-  // todos os centímetros do simulador (2 a 400 cm), com o eco até 3 µs abaixo ou acima do esperado
-  {
-    int erros = 0;
-    for (int cm = 2; cm <= 400; cm++)
-      for (int d = -3; d <= 3; d++) {
-        uint32_t us = (uint32_t)(cm * 58.8 + 0.5) + d;
-        if ((int)distanciaPeloEco(us) != cm) erros++;
-      }
-    confere(erros == 0, "2 a 400 cm com o eco variando ±3 µs: sempre o cm exato");
-  }
-
-  // 6. Valores do roteiro de demonstração (umidade fixa em 50%)
-  struct Caso { float temp, dist; int calcada, calor, status, motivo; const char* nome; };
-  const Caso roteiro[] = {
-    {26, 200, CALCADA_LIVRE,     CALOR_NORMAL,  STATUS_ACESSIVEL, MOTIVO_NENHUM,  "passo 1: livre + normal"},
-    {32, 200, CALCADA_LIVRE,     CALOR_ATENCAO, STATUS_ATENCAO,   MOTIVO_CALOR,   "passo 2: livre + atenção"},
-    {38, 200, CALCADA_LIVRE,     CALOR_PERIGO,  STATUS_ATENCAO,   MOTIVO_CALOR,   "passo 3: livre + perigo"},
-    {26, 100, CALCADA_ESTREITA,  CALOR_NORMAL,  STATUS_ATENCAO,   MOTIVO_CALCADA, "passo 4: estreita + normal"},
-    {38, 100, CALCADA_ESTREITA,  CALOR_PERIGO,  STATUS_EVITE,     MOTIVO_AMBOS,   "passo 5: estreita + perigo"},
-    {26,  50, CALCADA_BLOQUEADA, CALOR_NORMAL,  STATUS_EVITE,     MOTIVO_CALCADA, "passo 6: bloqueada + normal"},
-  };
-  for (const Caso& r : roteiro) {
-    float ic = indiceCalorDHTesp(r.temp, 50);
-    int calcada = classificarCalcada(r.dist), calor = classificarCalor(ic);
-    char d[120];
-    snprintf(d, sizeof d, "%s (índice de calor %.1f °C)", r.nome, ic);
-    confere(calcada == r.calcada && calor == r.calor &&
-            calcularStatus(calcada, calor) == r.status && calcularMotivo(calcada, calor) == r.motivo, d);
-    printf("  %-28s  T %2.0f °C  U 50%%  IC %4.1f °C  faixa %3.0f cm  ->  %s, motivo %s\n",
-           r.nome, r.temp, ic, r.dist, nomeStatus(calcularStatus(calcada, calor)), nomeMotivo(calcularMotivo(calcada, calor)));
-  }
-  // os valores de perigo do roteiro continuam em perigo se a equipe trocar o limite para 39 °C
-  confere(indiceCalorDHTesp(38, 50) >= 41 && indiceCalorDHTesp(32, 50) < 39, "roteiro funciona com limite de 39 ou 41 °C");
-
-  // 6b. Câmera (Etapa 4): buraco deixa em EVITE com motivo 5 enquanto vale; depois, voltam os sensores
-  {
-    const uint32_t VALIDADE = 600000;  // 10 min
-    confere(!buracoValendo(false, 0, 1000, VALIDADE), "sem aviso de buraco: nao vale");
-    confere(buracoValendo(true, 5000, 5000, VALIDADE), "buraco acabou de chegar: vale");
-    confere(buracoValendo(true, 5000, 5000 + VALIDADE - 1, VALIDADE), "buraco 1 ms antes de vencer: ainda vale");
-    confere(!buracoValendo(true, 5000, 5000 + VALIDADE, VALIDADE), "buraco com 10 min completos: venceu");
-    uint32_t perto = 0xFFFFFFFFu - 100000;  // 100 s antes de o millis() voltar a zero
-    uint32_t depois = perto + 300000;        // 5 min depois (já passou do zero)
-    confere(depois < perto, "teste do zero: o relogio voltou a zero de verdade");
-    confere(buracoValendo(true, perto, depois, VALIDADE), "buraco continua valendo quando o millis() volta a zero");
-    confere(!buracoValendo(true, perto, perto + VALIDADE, VALIDADE), "buraco vence na hora certa mesmo passando pelo zero");
-    bool todosOk = true;
-    for (int calcada = 0; calcada <= 2; calcada++)
-      for (int calor = 0; calor <= 2; calor++) {
-        int s = calcularStatus(calcada, calor), m = calcularMotivo(calcada, calor);
-        if (statusComCamera(s, true) != STATUS_EVITE || motivoComCamera(m, true) != MOTIVO_BURACO) todosOk = false;
-        if (statusComCamera(s, false) != s || motivoComCamera(m, false) != m) todosOk = false;
-      }
-    confere(todosOk, "nas 9 combinacoes: com buraco, EVITE e motivo 5; sem buraco, fica a regra dos sensores");
-    confere(MOTIVO_BURACO == 5 && strcmp(nomeMotivo(MOTIVO_BURACO), "buraco") == 0 && strcmp(nomeMotivo(4), "nenhum") == 0,
-            "motivo 5 = buraco; o 4 (veiculo) nao existe mais");
-  }
-
-  // 7. Textos do OLED cabem na linha (21 caracteres)
-  char linha[40];
-  snprintf(linha, sizeof linha, "Faixa %dcm %s", 400, nomeCalcada(CALCADA_BLOQUEADA));
-  confere(strlen(linha) <= 21, "linha da faixa cabe no OLED");
-  snprintf(linha, sizeof linha, "Motivo: %s", nomeMotivo(MOTIVO_AMBOS));
-  confere(strlen(linha) <= 21, "linha do motivo cabe no OLED");
-  snprintf(linha, sizeof linha, "Buraco (camera) %ds", 600);
-  confere(strlen(linha) <= 21, "linha da contagem do buraco cabe no OLED");
-  confere(strlen(nomeStatus(STATUS_ACESSIVEL)) * 12 <= 128, "status grande cabe no OLED");
+  // 11. Textos do serial
+  confere(strcmp(nomeLuz(LUZ_ESCURO), "escuro") == 0 && strcmp(nomeLuz(LUZ_SOL), "sol direto") == 0 && strcmp(nomeLuz(LUZ_NORMAL), "normal") == 0, "nomes da luz");
+  confere(strcmp(nomeMotivo(MOTIVO_LUZ), "luz") == 0 && strcmp(nomeMotivo(MOTIVO_AMBOS), "luz+calor") == 0 && strcmp(nomeMotivo(MOTIVO_BURACO), "buraco") == 0
+          && strcmp(nomeMotivo(MOTIVO_NENHUM), "nenhum") == 0 && strcmp(nomeMotivo(MOTIVO_CALOR), "calor") == 0, "nomes dos motivos");
+  confere(strcmp(nomeStatus(STATUS_ACESSIVEL), "ACESSIVEL") == 0 && strcmp(nomeStatus(STATUS_ATENCAO), "ATENCAO") == 0 && strcmp(nomeStatus(STATUS_EVITE), "EVITE") == 0, "nomes dos status");
 
   printf("\n%d verificações passaram, %d falharam.\n", passou, falhou);
   return falhou == 0 ? 0 : 1;
