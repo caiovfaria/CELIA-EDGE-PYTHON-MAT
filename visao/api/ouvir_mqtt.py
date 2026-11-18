@@ -10,21 +10,25 @@ Parar: Ctrl+C
 import os
 import uuid
 from datetime import datetime
+from typing import Any
 
 import paho.mqtt.client as mqtt
+from paho.mqtt.properties import Properties
+from paho.mqtt.reasoncodes import ReasonCode
 
 BROKER = os.getenv("MQTT_BROKER", "broker.hivemq.com")
 PORTA = int(os.getenv("MQTT_PORTA", "1883"))
 TOPICO = os.getenv("MQTT_TOPICO", "celia/poste01/camera")
 
 
-def ao_conectar(cliente, dados, flags, codigo, propriedades) -> None:
+def ao_conectar(cliente: mqtt.Client, dados: Any, flags: mqtt.ConnectFlags,
+                codigo: ReasonCode, propriedades: Properties | None) -> None:
     """Chamada quando a conexao com o broker abre: assina o topico."""
     print(f"Conectado a {BROKER}:{PORTA}. Ouvindo o topico '{TOPICO}'...")
     cliente.subscribe(TOPICO, qos=1)
 
 
-def ao_receber(cliente, dados, mensagem) -> None:
+def ao_receber(cliente: mqtt.Client, dados: Any, mensagem: mqtt.MQTTMessage) -> None:
     """Chamada a cada mensagem nova no topico."""
     texto = mensagem.payload.decode("utf-8", errors="replace")
     if not texto:
@@ -35,8 +39,20 @@ def ao_receber(cliente, dados, mensagem) -> None:
     print(f"[{datetime.now():%H:%M:%S}] {texto}  ({origem})")
 
 
-cliente = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=f"celia-ouvinte-{uuid.uuid4().hex[:8]}")
-cliente.on_connect = ao_conectar
-cliente.on_message = ao_receber
-cliente.connect(BROKER, PORTA)
-cliente.loop_forever()
+def main() -> None:
+    """Conecta ao broker e fica ouvindo. Sem internet ou com Ctrl+C, sai com aviso, sem erro."""
+    cliente = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2,
+                          client_id=f"celia-ouvinte-{uuid.uuid4().hex[:8]}")
+    cliente.on_connect = ao_conectar
+    cliente.on_message = ao_receber
+    try:
+        cliente.connect(BROKER, PORTA)
+        cliente.loop_forever()
+    except OSError as erro:  # sem internet, DNS ou broker fora do ar
+        print(f"Nao deu para conectar a {BROKER}:{PORTA} ({erro}).")
+    except KeyboardInterrupt:
+        print("\nParado.")
+
+
+if __name__ == "__main__":
+    main()

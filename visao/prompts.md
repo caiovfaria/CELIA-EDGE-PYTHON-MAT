@@ -128,3 +128,16 @@ Reteste na API (mesmas 6 fotos): v1 4 de 6, v2 6 de 6 (calcadao com desenhos pas
 - `main.py`: análise numa função com trava (`threading.Lock`), usada pelo aquecimento, pelo `/analisar` e pela câmera; YOLO em outra thread com `run_in_threadpool`.
 - Contrato em `INTEGRACAO.md` seção 8.
 - Testes com `curl` (chave errada, não-JPEG, corpo vazio, poste malicioso, 1,2 MB, livre, buraco, RN09, 6 pedidos simultâneos, report do Gemini gravado) e pelo túnel. A câmera real ainda não foi testada: a placa está com o Caio.
+
+### 18/11/2026 · Varredura de robustez da API e do assistente Gemini (Claude Code)
+
+**Prompt:** "Faça esta varredura com as mesmas regras novamente [funções com tipo, docstring e uma tarefa cada; dados em dicionários e conjuntos; API real com plano B; nada derruba: rede, arquivo e entrada]. E a API? E o Gemini LLM? Eles também são entregáveis. Nada pode quebrar."
+
+**Resultado:**
+- 35 testes de falha com o `TestClient` do FastAPI (Gemini simulado, broker MQTT inexistente, banco e fotos em pasta temporária). Antes: 4 falhas, todas no assistente.
+- `assistente.py`: sem internet ou resposta estranha do Gemini davam erro 500; agora dão 503 com aviso claro. Modelo não encontrado (404) ou sem conexão agora passa para o modelo reserva (plano B), em vez de desistir.
+- `main.py`: `trilha.json` quebrado não impede mais a API de ligar (trilha vazia com aviso); `request.client` vazio não derruba o limite por IP; tipos que faltavam.
+- `ouvir_mqtt.py`: sem internet ou com Ctrl+C sai com aviso, sem erro; código dentro de `main()`.
+- `poste.py` e `treino/baixar_negativas.py`: só tipos e docstrings.
+- Depois: 35 de 35, mais a trilha corrompida, o ouvinte sem internet e uma rodada com o Gemini real (trajeto e descrição responderam 200).
+- Correção na mesma data, achada no teste pelo app: o google-genai 3.x lança os erros de rede pela biblioteca `httpx2`, e não pela `httpx`. O `except httpx.TimeoutException` nunca pegava o timeout do Gemini, que virava erro 500 na tela de reportar. Agora o código reconhece as duas. Os testes passaram a usar os erros reais da `httpx2` (37 de 37).
