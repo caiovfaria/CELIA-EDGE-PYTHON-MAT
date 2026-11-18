@@ -15,6 +15,14 @@ Todo o Python da C.E.L.I.A. fica nesta pasta (a modelagem de Cálculo fica em `c
 
 A chave do Gemini fica só no `api/.env` (modelo em `api/.env.example`), que nunca vai para o GitHub.
 
+## Integrantes
+
+| Nome completo | RM | Parte no projeto |
+| --- | --- | --- |
+| Caio Viana de Faria | 570634 | Edge (ESP32 no Wokwi e ThingSpeak), câmera do poste e Cálculo |
+| Isaac Israel Rosa Coimbra | 570072 | Front-end (app React) e Web Development |
+| João Thees Castro Santiago | 572829 | Python: programa de Lógica, API de visão computacional, modelo de buracos e assistente Gemini |
+
 # Programa de Lógica (Computational Thinking with Python)
 
 Programa de terminal que lê as leituras do poste 01 no canal público do ThingSpeak, calcula o índice de risco de cada leitura e mostra a mesma faixa que o cidadão vê no app: **Acessível**, **Atenção** ou **Evite**.
