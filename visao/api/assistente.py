@@ -20,10 +20,22 @@ import os
 import re
 from typing import Literal
 
-import httpx  # ja vem instalado com o google-genai; usado so para reconhecer o erro de tempo
+import httpx  # ja vem instalado com o google-genai; usado so para reconhecer erros de rede
 from google import genai
 from google.genai import errors, types
 from pydantic import BaseModel, Field
+
+# As versoes novas do google-genai (3.x) usam a biblioteca httpx2, e nao a httpx: um timeout
+# chega como httpx2.ReadTimeout, que o "except httpx.TimeoutException" NAO pega (achado em
+# 18/11/2026: o timeout virava erro 500 no app). Por isso reconhecemos as duas.
+try:
+    import httpx2
+
+    ERROS_TEMPO = (httpx.TimeoutException, httpx2.TimeoutException)
+    ERROS_REDE = (httpx.TransportError, httpx2.TransportError)
+except ImportError:  # versao antiga do google-genai, so com httpx
+    ERROS_TEMPO = (httpx.TimeoutException,)
+    ERROS_REDE = (httpx.TransportError,)
 
 # ---------------------------------------------------------------------------
 # Configuracao. Valores marcados como PROPOSTA ainda precisam de aprovacao da equipe.
@@ -232,10 +244,10 @@ def perguntar_gemini(instrucao: str, conteudo: str, formato: type[BaseModel]) ->
                 f"O Gemini esta sobrecarregado agora (erro {erro.code}). Tente de novo em instantes."
             )
             continue
-        except httpx.TimeoutException:  # passou dos 20 s sem resposta: tenta o reserva
+        except ERROS_TEMPO:  # passou dos 20 s sem resposta: tenta o reserva
             mensagem_erro = "O Gemini demorou demais para responder (mais de 20 s). Tente de novo."
             continue
-        except httpx.TransportError:  # sem internet, DNS ou conexao caiu (antes virava erro 500)
+        except ERROS_REDE:  # sem internet, DNS ou conexao caiu (antes virava erro 500)
             mensagem_erro = "Sem conexao com o Gemini agora. Confira a internet e tente de novo."
             continue
         except (errors.APIError, ValueError):  # resposta fora do formato esperado

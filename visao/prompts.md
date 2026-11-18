@@ -140,3 +140,4 @@ Reteste na API (mesmas 6 fotos): v1 4 de 6, v2 6 de 6 (calcadao com desenhos pas
 - `ouvir_mqtt.py`: sem internet ou com Ctrl+C sai com aviso, sem erro; código dentro de `main()`.
 - `poste.py` e `treino/baixar_negativas.py`: só tipos e docstrings.
 - Depois: 35 de 35, mais a trilha corrompida, o ouvinte sem internet e uma rodada com o Gemini real (trajeto e descrição responderam 200).
+- Correção na mesma data, achada no teste pelo app: o google-genai 3.x lança os erros de rede pela biblioteca `httpx2`, e não pela `httpx`. O `except httpx.TimeoutException` nunca pegava o timeout do Gemini, que virava erro 500 na tela de reportar. Agora o código reconhece as duas. Os testes passaram a usar os erros reais da `httpx2` (37 de 37).
