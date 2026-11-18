@@ -1,0 +1,115 @@
+C.E.L.I.A. - modelagem matematica
+============================================================
+
+[0] A formula do indice de calor e a mesma do ESP32?
+  T (C)  U (%)   IC do canal   IC calculado   registro
+   26.0   45.0          25.8           25.8   35
+   26.0   50.0          26.0           26.0   1
+   28.0   65.0          30.0           30.0   20
+   32.0   50.0          34.4           34.4   22
+   34.0   60.0          42.2           42.2   24
+   38.0   50.0          48.6           48.6   33
+   44.3   50.0          70.5           70.5   8
+   80.0    0.0          41.4           41.4   9
+   80.0  100.0         708.7          708.7   10
+  9 de 9 pares diferentes batem com o ESP32 (1 casa decimal).
+
+[1a] Limites laterais da regra da calcada (calor normal)
+  d -> 120 pela esquerda (h = [1, 0.1, 0.01, 0.001]): status [1, 1, 1, 1]
+  d -> 120 pela direita  (h = [1, 0.1, 0.01, 0.001]): status [0, 0, 0, 0]
+  status no ponto: 0  ->  limites laterais 1 e 0: diferentes, entao nao existe limite em 120 cm
+  d -> 90 pela esquerda (h = [1, 0.1, 0.01, 0.001]): status [2, 2, 2, 2]
+  d -> 90 pela direita  (h = [1, 0.1, 0.01, 0.001]): status [1, 1, 1, 1]
+  status no ponto: 1  ->  limites laterais 2 e 1: diferentes, entao nao existe limite em 90 cm
+
+[1b] Perto do limite, um ruido minimo troca o status
+  Calcada real com 119.93 cm: eco ideal de 7051.9 us.
+  ruido no eco (us)   distancia registrada (cm)   status
+               -3.0                         119   1
+               -1.5                         119   1
+                0.0                         120   0
+                1.5                         120   0
+                3.0                         120   0
+
+[1c] Comportamento extremo do indice de calor (limite no infinito)
+  c2(U) muda de sinal em U = 5.62 %.
+  U < 5.6 %: lim T->inf IC = -infinito;  U > 5.6 %: lim T->inf IC = +infinito.
+  Com U = 0 %, IC'(T) = 0 em T = 65.5 C (maximo): acima disso o IC CAI quando a temperatura sobe.
+    IC(60 C, 0 %) = 43.6 C
+    IC(65.5 C, 0 %) = 44.0 C
+    IC(70 C, 0 %) = 43.7 C
+    IC(80 C, 0 %) = 41.4 C
+    IC(80 C, 100 %) = 708.7 C
+  No canal (testes de 12/11 com o DHT22 no maximo do Wokwi):
+    registro 9: T = 80.0 C, U = 0.0 % -> IC = 41.4 C
+    registro 10: T = 80.0 C, U = 100.0 % -> IC = 708.7 C
+    registro 11: T = 80.0 C, U = 100.0 % -> IC = 708.7 C
+
+[2a] Modelo IC(t) = a0 + a1 cos(wt) + b1 sen(wt) + a2 cos(2wt) + b2 sen(2wt),  w = 2*pi/24
+  18/11/2023 (onda de calor): IC horario de 31.3 a 48.9 C (maximo as 14h)
+    a0 = 37.849  a1 = -6.681  b1 = -1.396  a2 = 3.174  b2 = -0.224
+    harmonicos   R2      erro medio (C)   erro deixando uma hora de fora (C)
+             1   0.787             2.51                                 2.87
+             2   0.958             1.11                                 1.40  <- usado
+             3   0.969             0.96                                 1.35
+             4   0.978             0.80                                 1.29
+  verão médio (dez/2023 a fev/2024): IC horario de 25.1 a 33.3 C (maximo as 12h)
+    a0 = 28.759  a1 = -3.685  b1 = -1.539  a2 = 1.079  b2 = -0.138
+    harmonicos   R2      erro medio (C)   erro deixando uma hora de fora (C)
+             1   0.920             0.83                                 0.95
+             2   0.988             0.32                                 0.40  <- usado
+             3   0.995             0.20                                 0.28
+             4   0.998             0.12                                 0.19
+
+[2b] Derivada: pico (IC' = 0 e IC'' < 0) e subida mais rapida (IC'' = 0 e IC' maximo)
+  18/11/2023 (onda de calor):
+    pico as 12h11: IC = 47.7 C, IC'' = -1.32 C/h2 (< 0, e maximo)
+    sobe mais rapido as 08h26: IC' = +3.25 C/h
+    desce mais rapido as 15h38: IC' = -2.74 C/h
+    atencao (>= 32 C): 00h00 a 02h53, 05h06 a 24h00  (21.8 h)
+    perigo (>= 41 C): 08h45 a 15h52  (7.1 h)
+  verão médio (dez/2023 a fev/2024):
+    pico as 12h36: IC = 33.6 C, IC'' = -0.54 C/h2 (< 0, e maximo)
+    sobe mais rapido as 08h22: IC' = +1.58 C/h
+    desce mais rapido as 16h14: IC' = -1.09 C/h
+    atencao (>= 32 C): 10h08 a 15h19  (5.2 h)
+    perigo (>= 41 C): nunca  (0.0 h)
+
+[2c] Limite do quociente de diferencas -> derivada (dia quente, na hora da subida mais rapida)
+  t0 = 08h26;  IC'(t0) pela formula = 3.2468 C/h
+        h (horas)   [IC(t0+h) - IC(t0)] / h
+              1   3.1535
+            0.5   3.2235
+           0.25   3.2410
+            0.1   3.2459
+           0.01   3.2468
+          0.001   3.2468
+
+[2d] Derivadas parciais: quanto o erro do DHT22 mexe no IC
+  18/11/2023 as 9h (perto de 41 C): T = 35.2 C, U = 51 %  ->  IC = 41.6 C
+    dIC/dT = 2.465 C por C (numerico 2.465);  dIC/dU = 0.412 C por % (numerico 0.412)
+    erro do DHT22 (+-0.5 C, +-2.0 %): dIC ~ 2.47*0.5 + 0.41*2.0 = 2.06 C  ->  IC entre 39.5 e 43.6 C
+  18/11/2023 as 6h (perto de 32 C): T = 28.3 C, U = 82 %  ->  IC = 33.2 C
+    dIC/dT = 2.713 C por C (numerico 2.713);  dIC/dU = 0.178 C por % (numerico 0.178)
+    erro do DHT22 (+-0.5 C, +-2.0 %): dIC ~ 2.71*0.5 + 0.18*2.0 = 1.71 C  ->  IC entre 31.5 e 34.9 C
+
+[3a] Calor acumulado acima de 32 C no dia (graus-hora), de 0h a 23h
+  18/11/2023 (onda de calor): exata (modelo) = 138.58 C.h;  Simpson (modelo) = 138.58;  trapezios (dados horarios) = 138.85
+  verão médio (dez/2023 a fev/2024): exata (modelo) = 5.49 C.h;  Simpson (modelo) = 5.49;  trapezios (dados horarios) = 5.14
+  o dia da onda de calor acumulou 25 vezes o calor acima de 32 C do verao medio
+
+[3b] Espera de 15 min no ponto: integral de max(IC - 32, 0) de t0 a t0 + 0,25 h
+  18/11/2023 (onda de calor): pior horario para chegar = 12h00 (3.93 C.h)
+    chegando as 07h00: 0.99 C.h  (IC medio na espera = 35.9 C)
+    chegando as 09h00: 2.55 C.h  (IC medio na espera = 42.2 C)
+    chegando as 12h00: 3.93 C.h  (IC medio na espera = 47.7 C)
+    chegando as 14h00: 3.37 C.h  (IC medio na espera = 45.5 C)
+    chegando as 17h00: 1.45 C.h  (IC medio na espera = 37.8 C)
+  verão médio (dez/2023 a fev/2024): pior horario para chegar = 12h30 (0.41 C.h)
+    chegando as 07h00: 0.00 C.h  (IC medio na espera = 27.5 C)
+    chegando as 09h00: 0.00 C.h  (IC medio na espera = 30.6 C)
+    chegando as 12h00: 0.39 C.h  (IC medio na espera = 33.6 C)
+    chegando as 14h00: 0.26 C.h  (IC medio na espera = 33.1 C)
+    chegando as 17h00: 0.00 C.h  (IC medio na espera = 30.1 C)
+
+Graficos salvos em graficos/: fig1 a fig5.
