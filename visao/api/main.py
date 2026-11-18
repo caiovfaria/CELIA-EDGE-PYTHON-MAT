@@ -29,6 +29,7 @@ import threading
 import time
 import uuid
 from collections import defaultdict, deque
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
@@ -42,6 +43,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import paho.mqtt.client as mqtt
 from PIL import Image, UnidentifiedImageError
 from ultralytics import YOLO
+from ultralytics.engine.results import Results
 
 import banco
 import poste
@@ -110,9 +112,28 @@ def aquecer_modelo() -> None:
         modelo_buracos.predict(Image.new("RGB", (640, 640), "gray"), verbose=False)
     estado_modelo["pronto"] = True
 
-# Licoes da mini trilha de IA [HU-19, RF18]: lidas uma vez, quando a API liga.
-with open(os.path.join(os.path.dirname(__file__), "dados", "trilha.json"), encoding="utf-8") as arquivo:
-    TRILHA = json.load(arquivo)
+def carregar_trilha() -> dict:
+    """Le as licoes da mini trilha de IA [HU-19, RF18] de dados/trilha.json.
+
+    Plano B: se o arquivo faltar ou estiver corrompido, devolve uma trilha sem licoes e
+    avisa no terminal. Antes, um trilha.json quebrado impedia a API inteira de ligar
+    (e levava junto o /analisar e a camera do poste).
+    """
+    caminho = os.path.join(os.path.dirname(__file__), "dados", "trilha.json")
+    try:
+        with open(caminho, encoding="utf-8") as arquivo:
+            trilha = json.load(arquivo)
+    except (OSError, ValueError) as erro:  # ValueError cobre JSON quebrado e texto nao UTF-8
+        print(f"[trilha] nao deu para ler o trilha.json ({erro}): trilha vazia.")
+        return {"titulo": "Mini trilha de IA", "licoes": []}
+    if not isinstance(trilha, dict) or not isinstance(trilha.get("licoes"), list):
+        print("[trilha] trilha.json sem a lista 'licoes': trilha vazia.")
+        return {"titulo": "Mini trilha de IA", "licoes": []}
+    return trilha
+
+
+# Lida uma vez, quando a API liga.
+TRILHA = carregar_trilha()
 
 # ---------------------------------------------------------------------------
 # MQTT: a API e quem PUBLICA; o ESP32 e quem ASSINA o topico.
@@ -124,7 +145,7 @@ cliente_mqtt = mqtt.Client(
 
 
 @asynccontextmanager
-async def ciclo_de_vida(app: FastAPI):
+async def ciclo_de_vida(app: FastAPI) -> AsyncIterator[None]:
     """Aquece o modelo, cria o banco, conecta ao broker quando a API liga e desconecta ao desligar."""
     banco.criar_tabelas()  # camera do poste [HU-24, RF23]
     # Thread separada: a API ja responde (GET / com modelo_pronto=False) enquanto aquece.
@@ -167,7 +188,7 @@ app.add_middleware(
 )
 
 
-def extrair_caixas(resultado) -> list[dict]:
+def extrair_caixas(resultado: Results) -> list[dict]:
     """Converte as deteccoes do YOLO em uma lista simples de dicionarios.
 
     Cada caixa tem x1, y1 (canto superior esquerdo), x2, y2 (canto inferior direito),
@@ -274,7 +295,7 @@ def listar_trilha() -> dict:
 def ver_licao(id_licao: int) -> dict:
     """Devolve uma licao pelo numero. Responde 404 se ela nao existir."""
     for licao in TRILHA["licoes"]:
-        if licao["id"] == id_licao:
+        if isinstance(licao, dict) and licao.get("id") == id_licao:
             return licao
     raise HTTPException(404, "Licao nao encontrada.")
 
@@ -284,6 +305,11 @@ def ver_licao(id_licao: int) -> dict:
 # ---------------------------------------------------------------------------
 # Horarios dos ultimos pedidos de cada IP. Fica so na memoria: some quando a API reinicia.
 pedidos_por_ip: dict[str, deque] = defaultdict(deque)
+
+
+def ip_do_pedido(request: Request) -> str:
+    """IP de quem perguntou. request.client pode vir vazio (alguns proxies): vira "desconhecido"."""
+    return request.client.host if request.client else "desconhecido"
 
 
 def checar_limite(ip: str) -> None:
@@ -300,7 +326,7 @@ def checar_limite(ip: str) -> None:
 @app.post("/assistente/trajeto")
 def assistente_trajeto(pedido: PedidoTrajeto, request: Request) -> dict:
     """Responde perguntas sobre o caminho usando so os trechos e locais enviados [RF20, RN06]."""
-    checar_limite(request.client.host)
+    checar_limite(ip_do_pedido(request))
     try:
         return responder_trajeto(pedido)
     except DadosGrandesDemais as erro:
@@ -312,7 +338,7 @@ def assistente_trajeto(pedido: PedidoTrajeto, request: Request) -> dict:
 @app.post("/assistente/descricao")
 def assistente_descricao(pedido: PedidoDescricao, request: Request) -> dict:
     """Sugere o texto do report; o cidadao revisa antes de enviar [RF21, RN07]."""
-    checar_limite(request.client.host)
+    checar_limite(ip_do_pedido(request))
     try:
         return sugerir_descricao(pedido)
     except AssistenteIndisponivel as erro:

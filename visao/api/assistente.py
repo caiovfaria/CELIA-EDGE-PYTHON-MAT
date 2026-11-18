@@ -200,7 +200,8 @@ def perguntar_gemini(instrucao: str, conteudo: str, formato: type[BaseModel]) ->
     """Envia o pedido ao Gemini e devolve a resposta ja no formato pedido (RespostaTrajeto etc.).
 
     response_schema obriga o modelo a responder um JSON com os campos de `formato`.
-    Tenta o modelo principal e, se ele estiver sobrecarregado ou sem cota, o modelo reserva.
+    Plano B: tenta o modelo principal e, se ele falhar (sobrecarga, sem cota, modelo nao
+    encontrado, sem conexao ou resposta estranha), os modelos reserva, um de cada vez.
     Dispara AssistenteIndisponivel em qualquer falha: assim o app sempre recebe um aviso claro.
     """
     config = types.GenerateContentConfig(
@@ -221,6 +222,10 @@ def perguntar_gemini(instrucao: str, conteudo: str, formato: type[BaseModel]) ->
             if erro.code == 429:
                 mensagem_erro = "Cota gratuita do Gemini esgotada (erro 429). Tente em 1 minuto."
                 continue  # a cota gratis e separada por modelo: vale tentar o reserva
+            if erro.code == 404:
+                # Nome de modelo errado ou aposentado pelo Google: o reserva pode existir
+                mensagem_erro = "Modelo do Gemini nao encontrado (erro 404). Confira o .env da API."
+                continue
             raise AssistenteIndisponivel(f"O Gemini recusou o pedido (erro {erro.code}).")
         except errors.ServerError as erro:  # 5xx: sobrecarga ou problema do lado do Google
             mensagem_erro = (
@@ -229,6 +234,12 @@ def perguntar_gemini(instrucao: str, conteudo: str, formato: type[BaseModel]) ->
             continue
         except httpx.TimeoutException:  # passou dos 20 s sem resposta: tenta o reserva
             mensagem_erro = "O Gemini demorou demais para responder (mais de 20 s). Tente de novo."
+            continue
+        except httpx.TransportError:  # sem internet, DNS ou conexao caiu (antes virava erro 500)
+            mensagem_erro = "Sem conexao com o Gemini agora. Confira a internet e tente de novo."
+            continue
+        except (errors.APIError, ValueError):  # resposta fora do formato esperado
+            mensagem_erro = "O Gemini respondeu de um jeito inesperado. Tente de novo."
             continue
 
         # parsed vem vazio se a resposta foi bloqueada pelos filtros do Google ou veio incompleta.

@@ -7,12 +7,14 @@ CATS = ["Category:Portuguese pavement in Rio de Janeiro",
         "Category:Calçadão de Copacabana",
         "Category:Calçadão de Ipanema"]
 
-def api(params):
+def api(params: dict) -> dict:
+    """Consulta a API do Wikimedia Commons e devolve a resposta JSON."""
     url = "https://commons.wikimedia.org/w/api.php?" + urllib.parse.urlencode(params)
     with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=30) as r:
         return json.load(r)
 
-def limpa(html):
+def limpa(html: str | None) -> str:
+    """Tira as tags HTML do texto de autor e licenca."""
     return re.sub(r"<[^>]+>", "", html or "").strip()
 
 itens = {}

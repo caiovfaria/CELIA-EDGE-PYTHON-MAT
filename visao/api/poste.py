@@ -27,6 +27,7 @@ import re
 import secrets
 import threading
 import uuid
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Query, Request
@@ -71,7 +72,11 @@ ultimo_pedido_report = {}
 trava_reports = threading.Lock()
 
 
-def configurar(analisar, publicar, modelo_pronto) -> None:
+def configurar(
+    analisar: Callable[[Image.Image], tuple[str, list[dict]]],
+    publicar: Callable[[str], bool],
+    modelo_pronto: Callable[[], bool],
+) -> None:
     """Recebe do main.py as funcoes de analise, de MQTT e de "modelo pronto"."""
     ligacoes["analisar"] = analisar
     ligacoes["publicar"] = publicar
