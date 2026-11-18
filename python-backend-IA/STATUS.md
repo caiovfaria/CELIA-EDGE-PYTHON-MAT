@@ -1,5 +1,7 @@
 # Status da visao computacional (atualizado em 13/11/2026)
 
+> 18/11/2026: a pasta `visao/` foi juntada com a `python/` na pasta `python-backend-IA/`. Os caminhos antigos abaixo, nas partes de histórico, ficam como estavam.
+
 ## Pendencias em 13/11/2026 (modelo de buracos e assistente Gemini funcionando)
 
 Feito em 13/11: assistente (/assistente/trajeto e /assistente/descricao), trilha (GET /trilha) e correcao do carregamento sem fim (timeout de 20 s e sem repeticao automatica da biblioteca). Guia do app para o Isaac em INTEGRACAO.md, secao 7.
@@ -20,7 +22,7 @@ Feito em 13/11: assistente (/assistente/trajeto e /assistente/descricao), trilha
 
 ## Estado em 12/11/2026 (fim do dia)
 
-Responsaveis: Caio (edge/ e Wokwi), Isaac (app React e Web Dev), Joao (visao/, API, MQTT e programa Python da disciplina de Logica). Sem dono: matematica, relatorio, pitch, RF13 (reports a partir dos postes).
+Responsaveis: Caio (edge/ e Wokwi), Isaac (app React e Web Dev), Joao (python-backend-IA/: API, MQTT, visao computacional e programa Python da disciplina de Logica). Sem dono: matematica, relatorio, pitch, RF13 (reports a partir dos postes).
 
 Feito hoje:
 - Modelo v2 adotado (6 de 6 nas fotos de calcada); v1 guardado.
@@ -95,7 +97,7 @@ Correcao aplicada no v2 (aprovada 12/11): 38 fotos de calcadas com desenhos escu
 
 ## Como rodar a API
 ```powershell
-cd visao\api
+cd python-backend-IA\api
 python -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt
 .venv\Scripts\python -m uvicorn main:app --reload
@@ -105,7 +107,7 @@ Abrir http://127.0.0.1:8000/docs
 ## Como testar o MQTT
 Terminal 1 (faz o papel do ESP32):
 ```powershell
-cd visao\api
+cd python-backend-IA\api
 .venv\Scripts\python ouvir_mqtt.py
 ```
 Terminal 2: rodar a API e enviar uma foto em http://127.0.0.1:8000/docs. O resultado aparece no terminal 1.

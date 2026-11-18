@@ -1,4 +1,21 @@
-# C.E.L.I.A. · Programa de Lógica (Computational Thinking with Python)
+# C.E.L.I.A. · Python do projeto (Lógica, API e IA)
+
+Todo o Python da C.E.L.I.A. fica nesta pasta (a modelagem de Cálculo fica em `calculo/`). Desde 18/11/2026 ela junta as antigas pastas `python/` e `visao/`.
+
+| Caminho | O que é |
+| --- | --- |
+| `main.py` | Programa da disciplina de Lógica (Computational Thinking with Python), explicado abaixo |
+| `api/main.py` | API de visão computacional (FastAPI): `POST /analisar`, `GET /trilha` e publicação no MQTT |
+| `api/assistente.py` | Assistente com o Gemini (LLM): `/assistente/trajeto` e `/assistente/descricao` |
+| `api/poste.py` e `api/banco.py` | Fotos da câmera do poste (`/poste/...`) guardadas no SQLite |
+| `api/modelos/buracos.pt` | Modelo próprio de buracos (YOLOv8, v2) |
+| `treino/treino_buracos.ipynb` | Notebook de treino do modelo (Colab) |
+| `STATUS.md` | Estado da visão computacional e como rodar a API |
+| `prompts.md` | Registro dos prompts de IA de todas as partes desta pasta |
+
+A chave do Gemini fica só no `api/.env` (modelo em `api/.env.example`), que nunca vai para o GitHub.
+
+# Programa de Lógica (Computational Thinking with Python)
 
 Programa de terminal que lê as leituras do poste 01 no canal público do ThingSpeak, calcula o índice de risco de cada leitura e mostra a mesma faixa que o cidadão vê no app: **Acessível**, **Atenção** ou **Evite**.
 
@@ -8,7 +25,7 @@ Programa de terminal que lê as leituras do poste 01 no canal público do ThingS
 ## Como rodar
 
 ```
-cd python
+cd python-backend-IA
 pip install -r requirements.txt
 python main.py
 ```

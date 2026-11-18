@@ -2,4 +2,6 @@
 tests/teste_logica
 tests/teste_sketch
 *.exe
-python/__pycache__/
+__pycache__/
+.venv/
+.env

@@ -9,8 +9,7 @@ Atualizado em 13/11/2026.
 | Pasta | Parte | Responsável |
 | --- | --- | --- |
 | `edge/` | ESP32 no Wokwi, ThingSpeak | Caio |
-| `visao/` | API de visão (FastAPI), modelo de buracos, MQTT | João |
-| `python/` | Programa da disciplina de Lógica (lê o ThingSpeak) | João |
+| `python-backend-IA/` | Todo o Python do projeto (menos o cálculo): programa da disciplina de Lógica (`main.py`, lê o ThingSpeak), API (FastAPI) com o assistente Gemini e o SQLite (`api/`), modelo de buracos e treino (`api/modelos/`, `treino/`), MQTT | João |
 | `app/` | Front em React e interações (Web Dev) | Isaac |
 
 ## 1. API de visão para o ESP32 (MQTT) [HU-07, RF10, RN02]
@@ -19,7 +18,7 @@ Atualizado em 13/11/2026.
 | --- | --- |
 | Broker | `broker.hivemq.com`, porta 1883 (público, só para o protótipo) |
 | Tópico | `celia/poste01/camera` |
-| Quem publica | API de visão (`visao/api/main.py`), depois de cada foto analisada |
+| Quem publica | API de visão (`python-backend-IA/api/main.py`), depois de cada foto analisada |
 | Quem assina | ESP32 do poste 01 (`edge/sketch.ino`, Etapa 4) |
 | Mensagem | Só o texto `livre` ou `buraco`. Nada de foto nem dado pessoal (RNF01) |
 | QoS | 1 |
@@ -28,7 +27,7 @@ Atualizado em 13/11/2026.
 | Mensagem desconhecida | Ignorar. No broker público qualquer pessoa pode publicar no tópico |
 
 Teste sem a API: no HiveMQ WebSocket Client, publicar `buraco` em `celia/poste01/camera`.
-Teste sem o Wokwi: `visao/api/ouvir_mqtt.py` assina o tópico e mostra o que chega.
+Teste sem o Wokwi: `python-backend-IA/api/ouvir_mqtt.py` assina o tópico e mostra o que chega.
 
 Segurança: broker público serve só para o protótipo (qualquer pessoa lê e publica). Versão real: broker próprio com usuário, senha e TLS (porta 8883).
 
@@ -80,7 +79,7 @@ Decisão do João (13/11/2026): o conteúdo da trilha fica na API; o app só mon
 - `GET /trilha/{id}`: uma lição. 404 se não existir.
 - Cada lição: `id`, `titulo`, `duracao_minutos`, `paragrafos` (lista de frases curtas), `exemplo_no_trabalho`, `pratique`.
 - Acessibilidade (RNF08) é do app: títulos como cabeçalhos, leitura por leitor de tela, navegação por teclado.
-- Texto das lições: rascunho em `visao/api/dados/trilha.json`, para a equipe revisar.
+- Texto das lições: rascunho em `python-backend-IA/api/dados/trilha.json`, para a equipe revisar.
 
 ## 6. App para a API: assistente de IA com Gemini Flash (HTTP) [HU-21, HU-22, RF20, RF21]
 
@@ -124,7 +123,7 @@ O app só conversa com a API da equipe por HTTP (`fetch`). Ele nunca fala com o 
 ### Passo 1. Rodar a API na sua máquina (enquanto não houver VPS)
 
 ```powershell
-cd visao\api
+cd python-backend-IA\api
 python -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt
 copy .env.example .env
@@ -284,7 +283,7 @@ Mostre o `erro` do hook. A API já manda o texto pronto em português:
 
 ## 8. Câmera do poste (ESP32-CAM) para a API e API para o site (HTTP) [HU-16, HU-23, HU-24, HU-25, RF09, RF10, RF13, RF22, RF23, RF24]
 
-Decisão de 15/11/2026: a IA de visão roda nas fotos da câmera do poste. A câmera manda uma foto a cada 20 s, a API guarda (SQLite), analisa com o modelo de buracos, avisa o ESP32 do Wokwi pelo MQTT (seção 1) e, se houver buraco, o Gemini escreve o report, que vai para a Prefeitura sem revisão humana (RN08). Código em `visao/api/poste.py` e `visao/api/banco.py`.
+Decisão de 15/11/2026: a IA de visão roda nas fotos da câmera do poste. A câmera manda uma foto a cada 20 s, a API guarda (SQLite), analisa com o modelo de buracos, avisa o ESP32 do Wokwi pelo MQTT (seção 1) e, se houver buraco, o Gemini escreve o report, que vai para a Prefeitura sem revisão humana (RN08). Código em `python-backend-IA/api/poste.py` e `python-backend-IA/api/banco.py`.
 
 Enquanto não há VPS, a API roda no PC do João e fica pública por um túnel da Cloudflare. O endereço muda quando o túnel reinicia: o João avisa o novo.
 

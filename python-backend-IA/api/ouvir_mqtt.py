@@ -3,7 +3,7 @@
 Faz o papel do ESP32 para testar sem o Wokwi: deixe rodando num terminal,
 envie uma foto para /analisar em outro e veja "livre" ou "buraco" aparecer aqui.
 
-Como rodar (dentro de visao/api):
+Como rodar (dentro de python-backend-IA/api):
     .venv\\Scripts\\python ouvir_mqtt.py
 Parar: Ctrl+C
 """

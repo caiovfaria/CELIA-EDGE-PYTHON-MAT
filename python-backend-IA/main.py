@@ -14,7 +14,7 @@ Os limites NAO foram inventados aqui: sao os mesmos do firmware do poste
 (edge/celia_logica.h), para o Python, o ESP32 e o app falarem a mesma lingua (RN01).
 Se a equipe mudar um limite, mude la e aqui (CONFIG).
 
-Como rodar (na pasta python/):
+Como rodar (na pasta python-backend-IA/):
     pip install requests
     python main.py
 """
