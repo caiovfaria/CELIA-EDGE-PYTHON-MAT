@@ -98,6 +98,6 @@ Parecer: "Etapa 4 pendente para commit". O Codex conferiu os 16 arquivos por SHA
 
 ## Ainda falta
 
-- **Teste de ponta a ponta:** foto → API de visão do João → MQTT → ESP32 no Wokwi → ThingSpeak, com `field6=5` no canal.
+- **Teste de ponta a ponta:** foto da câmera do poste (ESP32-CAM, pasta `camera/`) → API de visão do João → MQTT → ESP32 no Wokwi → ThingSpeak, com `field6=5` no canal.
 
 Já resolvido: a rodada com Wi-Fi (commit `93995f1`), a revisão 3 do Codex (Etapa 4 aprovada, commit `8de554d`) e as dúvidas com o João. O contrato de integração diz que a API publica sem retain e que `livre` não força nada, e o modelo de buracos é o v2 dele. O horário dentro da mensagem ficou como melhoria futura.
