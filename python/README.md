@@ -66,9 +66,9 @@ Configuração inválida (pesos que não somam 1, mínimo maior ou igual ao máx
 - `historico.json` não repete leituras: os `entry_id` já salvos ficam num `set`.
 - Plano B: toda busca que dá certo salva os dados em `backup.json`; se a internet ou o ThingSpeak falharem (timeout, status diferente de 200 ou `RequestException`), o programa usa esse arquivo.
 - Nada derruba o programa:
-    - **rede:** sem internet, usa o `backup.json`;
-    - **arquivo:** `backup.json` corrompido ou ausente vira lista vazia com aviso; `historico.json` corrompido é guardado como `historico_corrompido.json` e um novo começa; erro ao gravar (ex.: `relatorio.csv` aberto no Excel) mostra aviso;
-    - **entrada:** opção inválida pede de novo, e Ctrl+C sai com "Até logo!" sem erro.
+    - **rede:** sem internet, timeout, status diferente de 200 ou resposta em formato estranho (ex.: `-1` de canal privado), usa o `backup.json`;
+    - **arquivo:** `backup.json` ausente, corrompido ou com registros estranhos vira lista vazia (ou pula o registro) com aviso; `historico.json` corrompido é guardado como `historico_corrompido.json` e um novo começa; erro ao gravar (ex.: `relatorio.csv` aberto no Excel) mostra aviso;
+    - **entrada:** opção inválida pede de novo, e Ctrl+C (no menu ou durante a busca) sai com "Até logo!" sem erro.
 
 ## Limitação
 

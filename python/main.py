@@ -120,23 +120,30 @@ def classificar(risco: float, config: dict) -> str:
 
 
 def buscar_thingspeak(config: dict) -> list[dict]:
-    """Busca as leituras no ThingSpeak e salva uma copia em backup.json (plano B).
+    """Busca as leituras no ThingSpeak e devolve a lista "feeds" do canal.
 
-    Dispara requests.RequestException se a internet ou o ThingSpeak falharem.
+    Dispara requests.RequestException se a internet ou o ThingSpeak falharem, inclusive
+    quando a resposta nao tem o formato esperado (ex.: "-1" de canal privado ou inexistente).
     """
     resposta = requests.get(
         config["url"], params={"results": config["quantidade"]}, timeout=config["timeout_s"]
     )
     if resposta.status_code != 200:
         raise requests.RequestException(f"ThingSpeak respondeu com status {resposta.status_code}")
-    feeds = resposta.json().get("feeds", [])
+    dados = resposta.json()
+    if not isinstance(dados, dict) or not isinstance(dados.get("feeds"), list):
+        raise requests.RequestException("ThingSpeak respondeu num formato inesperado")
+    return dados["feeds"]
+
+
+def salvar_backup(feeds: list[dict], config: dict) -> None:
+    """Guarda uma copia das leituras em backup.json (plano B). Se nao der, so avisa."""
     try:
         with open(config["arquivo_backup"], "w", encoding="utf-8") as arquivo:
             json.dump(feeds, arquivo, ensure_ascii=False, indent=2)
     except OSError as erro:
         # Os dados vieram; so o plano B nao foi atualizado desta vez
         print(f"Aviso: nao deu para atualizar o backup.json ({erro}).")
-    return feeds
 
 
 def ler_backup(config: dict) -> list[dict]:
@@ -150,7 +157,7 @@ def ler_backup(config: dict) -> list[dict]:
     try:
         with open(config["arquivo_backup"], encoding="utf-8") as arquivo:
             feeds = json.load(arquivo)
-    except (OSError, json.JSONDecodeError) as erro:
+    except (OSError, ValueError) as erro:  # ValueError cobre JSON quebrado e texto nao UTF-8
         print(f"O backup.json nao pode ser lido ({erro}).")
         return []
     if not isinstance(feeds, list):
@@ -167,31 +174,45 @@ def converter_numero(texto: str | None) -> float | None:
         return None
 
 
-def montar_leituras(feeds: list[dict], config: dict) -> list[dict]:
-    """Transforma os registros do canal em leituras {id, horario, medidas, faixa}.
+def registro_valido(feed: object) -> bool:
+    """True se o registro tem entry_id inteiro e created_at em texto (backup editado a mao pode nao ter)."""
+    return (isinstance(feed, dict)
+            and isinstance(feed.get("entry_id"), int)
+            and isinstance(feed.get("created_at"), str))
 
-    Pula registros com campo vazio (sensor falhou) ou valor absurdo (teste antigo).
+
+def extrair_medidas(feed: dict, config: dict) -> dict | None:
+    """Le as medidas do registro. Devolve None se algum campo estiver vazio ou absurdo."""
+    medidas = {}
+    for nome, regra in config["medidas"].items():
+        valor = converter_numero(feed.get(regra["campo"]))
+        minimo, maximo = config["faixa_valida"][nome]
+        if valor is None or not minimo <= valor <= maximo:
+            return None
+        medidas[nome] = valor
+    return medidas
+
+
+def montar_leituras(feeds: list[dict], config: dict) -> list[dict]:
+    """Transforma os registros do canal em leituras {id, horario, medidas, risco, faixa}.
+
+    Pula registros estranhos, com campo vazio (sensor falhou) ou valor absurdo (teste antigo).
     """
     leituras = []
     for feed in feeds:
-        if not isinstance(feed, dict) or "entry_id" not in feed or "created_at" not in feed:
-            continue  # registro estranho (backup editado a mao): pula
-        medidas = {}
-        for nome, regra in config["medidas"].items():
-            valor = converter_numero(feed.get(regra["campo"]))
-            minimo, maximo = config["faixa_valida"][nome]
-            if valor is None or not minimo <= valor <= maximo:
-                break
-            medidas[nome] = valor
-        else:  # so entra aqui se nenhuma medida foi pulada
-            risco = calcular_risco(medidas, config)
-            leituras.append({
-                "id": feed["entry_id"],
-                "horario": feed["created_at"],
-                "medidas": medidas,
-                "risco": risco,
-                "faixa": classificar(risco, config),
-            })
+        if not registro_valido(feed):
+            continue
+        medidas = extrair_medidas(feed, config)
+        if medidas is None:
+            continue
+        risco = calcular_risco(medidas, config)
+        leituras.append({
+            "id": feed["entry_id"],
+            "horario": feed["created_at"],
+            "medidas": medidas,
+            "risco": risco,
+            "faixa": classificar(risco, config),
+        })
     return leituras
 
 
@@ -199,6 +220,7 @@ def carregar_leituras(config: dict) -> tuple[list[dict], str]:
     """Tenta o ThingSpeak; se falhar, usa o backup.json. Devolve (leituras, origem)."""
     try:
         feeds = buscar_thingspeak(config)
+        salvar_backup(feeds, config)
         origem = "ThingSpeak (ao vivo)"
     except requests.RequestException as erro:
         print(f"Nao deu para falar com o ThingSpeak ({erro}). Usando o backup.json.")
@@ -255,20 +277,28 @@ def maior_episodio_perigo(leituras: list[dict]) -> tuple[int, str, str]:
     return maior, inicio_maior, fim_maior
 
 
-def mostrar_resumo(leituras: list[dict]) -> None:
-    """Imprime contagem por faixa, tendencia e maior episodio em Evite."""
+def mostrar_resumo(leituras: list[dict], config: dict) -> None:
+    """Imprime contagem por faixa, tendencia, faixa atual com aviso e maior episodio em Evite."""
     print("\nLeituras por faixa:")
     for faixa, total in contar_faixas(leituras).items():
         print(f"  {texto_faixa(faixa)}: {total}")
     print(f"Tendencia: {calcular_tendencia(leituras)}")
     ultima = leituras[-1]
     print(f"Agora ({ultima['horario']}): {texto_faixa(ultima['faixa'])}. "
-          f"AVISO: {CONFIG['avisos'][ultima['faixa']]}")
+          f"AVISO: {config['avisos'][ultima['faixa']]}")
     quantidade, inicio, fim = maior_episodio_perigo(leituras)
     if quantidade:
         print(f"Maior episodio em Evite: {quantidade} leituras seguidas, de {inicio} a {fim}")
     else:
         print("Nenhuma leitura em Evite.")
+
+
+def guardar_corrompido(caminho: str) -> None:
+    """Renomeia um arquivo corrompido para <nome>_corrompido.json, para nao perder o conteudo."""
+    copia = caminho.replace(".json", "_corrompido.json")
+    os.replace(caminho, copia)
+    print(f"O {os.path.basename(caminho)} estava corrompido: guardei uma copia em "
+          f"{os.path.basename(copia)} e comecei um novo.")
 
 
 def ler_historico(config: dict) -> list[dict]:
@@ -279,14 +309,12 @@ def ler_historico(config: dict) -> list[dict]:
     try:
         with open(caminho, encoding="utf-8") as arquivo:
             historico = json.load(arquivo)
-        if isinstance(historico, list) and all(isinstance(l, dict) and "id" in l for l in historico):
+        if isinstance(historico, list) and all(
+                isinstance(l, dict) and isinstance(l.get("id"), int) for l in historico):
             return historico
-    except json.JSONDecodeError:
+    except ValueError:  # JSON quebrado ou texto nao UTF-8
         pass
-    copia = caminho.replace(".json", "_corrompido.json")
-    os.replace(caminho, copia)
-    print(f"O historico.json estava corrompido: guardei uma copia em {os.path.basename(copia)} "
-          "e comecei um historico novo.")
+    guardar_corrompido(caminho)
     return []
 
 
@@ -325,45 +353,59 @@ def mostrar_menu() -> str:
     return input("Escolha: ").strip()
 
 
-def main() -> None:
-    """Valida a configuracao e roda o menu em loop ate a pessoa escolher Sair."""
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8")  # icones ✓ ! ✕ no terminal do Windows
-    os.system("")  # liga as cores ANSI no terminal do Windows
-    validar_config(CONFIG)
+def opcao_buscar(config: dict) -> list[dict]:
+    """Opcao 1: carrega as leituras e avisa se vieram menos que o minimo pedido."""
+    leituras, origem = carregar_leituras(config)
+    print(f"{len(leituras)} leituras validas carregadas de {origem}.")
+    if len(leituras) < config["minimo_leituras"]:
+        print(f"Atencao: menos de {config['minimo_leituras']} leituras validas no canal.")
+    return leituras
 
+
+def opcao_salvar(leituras: list[dict], config: dict) -> None:
+    """Opcao 4: grava historico.json e relatorio.csv. Erro de arquivo vira aviso."""
+    try:
+        novas = salvar_historico(leituras, config)
+        salvar_relatorio(leituras, config)
+        print(f"historico.json: {novas} leituras novas. relatorio.csv atualizado.")
+    except OSError as erro:
+        # Ex.: relatorio.csv aberto no Excel (o Windows bloqueia o arquivo)
+        print(f"Nao deu para salvar ({erro}). Feche o arquivo e tente de novo.")
+
+
+def rodar_menu(config: dict) -> None:
+    """Menu em loop: le a opcao, executa e repete ate a pessoa escolher Sair (0)."""
     leituras: list[dict] = []
     while True:
-        try:
-            opcao = mostrar_menu()
-        except (KeyboardInterrupt, EOFError):
-            # Ctrl+C ou fim da entrada: sai sem mostrar erro
-            print("\nAte logo!")
-            break
+        opcao = mostrar_menu()
         if opcao == "1":
-            leituras, origem = carregar_leituras(CONFIG)
-            print(f"{len(leituras)} leituras validas carregadas de {origem}.")
-            if len(leituras) < CONFIG["minimo_leituras"]:
-                print(f"Atencao: menos de {CONFIG['minimo_leituras']} leituras validas no canal.")
+            leituras = opcao_buscar(config)
         elif opcao in ("2", "3", "4") and not leituras:
             print("Primeiro busque as leituras (opcao 1).")
         elif opcao == "2":
             mostrar_leituras(leituras)
         elif opcao == "3":
-            mostrar_resumo(leituras)
+            mostrar_resumo(leituras, config)
         elif opcao == "4":
-            try:
-                novas = salvar_historico(leituras, CONFIG)
-                salvar_relatorio(leituras, CONFIG)
-                print(f"historico.json: {novas} leituras novas. relatorio.csv atualizado.")
-            except OSError as erro:
-                # Ex.: relatorio.csv aberto no Excel (o Windows bloqueia o arquivo)
-                print(f"Nao deu para salvar ({erro}). Feche o arquivo e tente de novo.")
+            opcao_salvar(leituras, config)
         elif opcao == "0":
             print("Ate logo!")
-            break
+            return
         else:
             print("Opcao invalida. Digite 0, 1, 2, 3 ou 4.")
+
+
+def main() -> None:
+    """Prepara o terminal, valida a configuracao e roda o menu. Ctrl+C sai sem erro."""
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")  # icones ✓ ! ✕ no terminal do Windows
+    os.system("")  # liga as cores ANSI no terminal do Windows
+    validar_config(CONFIG)
+    try:
+        rodar_menu(CONFIG)
+    except (KeyboardInterrupt, EOFError):
+        # Ctrl+C (no menu ou durante a busca) ou fim da entrada: sai sem mostrar erro
+        print("\nAte logo!")
 
 
 if __name__ == "__main__":
