@@ -9,8 +9,7 @@ Atualizado em 13/11/2026.
 | Pasta | Parte | Responsável |
 | --- | --- | --- |
 | `edge/` | ESP32 no Wokwi, ThingSpeak | Caio |
-| `visao/` | API de visão (FastAPI), modelo de buracos, MQTT | João |
-| `python/` | Programa da disciplina de Lógica (lê o ThingSpeak) | João |
+| `python-backend-IA/` | Todo o Python do projeto (menos o cálculo): programa da disciplina de Lógica (`main.py`, lê o ThingSpeak), API (FastAPI) com o assistente Gemini e o SQLite (`api/`), modelo de buracos e treino (`api/modelos/`, `treino/`), MQTT | João |
 | `app/` | Front em React e interações (Web Dev) | Isaac |
 
 ## 1. API de visão para o ESP32 (MQTT) [HU-07, RF10, RN02]
@@ -19,7 +18,7 @@ Atualizado em 13/11/2026.
 | --- | --- |
 | Broker | `broker.hivemq.com`, porta 1883 (público, só para o protótipo) |
 | Tópico | `celia/poste01/camera` |
-| Quem publica | API de visão (`visao/api/main.py`), depois de cada foto analisada |
+| Quem publica | API de visão (`python-backend-IA/api/main.py`), depois de cada foto analisada |
 | Quem assina | ESP32 do poste 01 (`edge/sketch.ino`, Etapa 4) |
 | Mensagem | Só o texto `livre` ou `buraco`. Nada de foto nem dado pessoal (RNF01) |
 | QoS | 1 |
@@ -28,7 +27,7 @@ Atualizado em 13/11/2026.
 | Mensagem desconhecida | Ignorar. No broker público qualquer pessoa pode publicar no tópico |
 
 Teste sem a API: no HiveMQ WebSocket Client, publicar `buraco` em `celia/poste01/camera`.
-Teste sem o Wokwi: `visao/api/ouvir_mqtt.py` assina o tópico e mostra o que chega.
+Teste sem o Wokwi: `python-backend-IA/api/ouvir_mqtt.py` assina o tópico e mostra o que chega.
 
 Segurança: broker público serve só para o protótipo (qualquer pessoa lê e publica). Versão real: broker próprio com usuário, senha e TLS (porta 8883).
 
@@ -38,19 +37,24 @@ Canal público `3577155`, leitura sem chave:
 
 - Últimos registros: https://api.thingspeak.com/channels/3577155/feeds.json?results=20
 - Último status: https://api.thingspeak.com/channels/3577155/fields/5/last.json
+- Última luminosidade: https://api.thingspeak.com/channels/3577155/fields/7/last.json
+
+Desde 18/11/2026 o poste mede luz (LDR) e calor (DHT22). O HC-SR04 saiu: o buraco na calçada é visto pela câmera com o modelo de IA (motivo 5).
 
 | Campo | Conteúdo |
 | --- | --- |
 | field1 | Temperatura (°C, 1 casa decimal) |
 | field2 | Umidade (%, 1 casa decimal) |
 | field3 | Índice de calor (°C, 1 casa decimal) |
-| field4 | Distância livre na calçada (cm, inteiro) |
+| field4 | Não é usado pelo poste desde 18/11/2026 (vem vazio). Os registros 1 a 39 têm a distância livre em cm, da versão antiga |
 | field5 | Status do trecho: 0 Acessível (verde), 1 Atenção (amarelo), 2 Evite (vermelho) |
-| field6 | Motivo: 0 nenhum, 1 calçada, 2 calor, 3 calçada e calor, 5 buraco (câmera). O 4 (veículo) foi removido em 12/11/2026 |
+| field6 | Motivo: 0 nenhum, 1 luz (rua escura, ou sol direto junto com calor), 2 calor, 3 luz e calor, 5 buraco (câmera). O 4 (veículo) foi removido em 12/11/2026. Até o registro 39, o motivo 1 era calçada |
+| field7 | Luminosidade (lux, inteiro): abaixo de 10 é rua escura; a partir de 25.000 é sol direto |
 
 Cuidados de quem lê:
 
 - Os valores vêm como texto (`"26.0"`, `"2"`): converter para número.
+- O Python de Lógica lê o field3 e o field7 e pula os registros sem eles (os antigos, de 1 a 39).
 - Se um sensor falhar, o campo dele vem `null` naquele registro. Status e motivo continuam vindo.
 - O poste envia a cada 20 s e não envia sem dado novo. Sem registro há mais de 10 min (pelo `created_at`, em UTC), o trecho fica cinza.
 - Registros antigos de teste têm valores absurdos (80 °C, índice de calor 708). Quem lê não pode quebrar com isso.
@@ -75,7 +79,7 @@ Decisão do João (13/11/2026): o conteúdo da trilha fica na API; o app só mon
 - `GET /trilha/{id}`: uma lição. 404 se não existir.
 - Cada lição: `id`, `titulo`, `duracao_minutos`, `paragrafos` (lista de frases curtas), `exemplo_no_trabalho`, `pratique`.
 - Acessibilidade (RNF08) é do app: títulos como cabeçalhos, leitura por leitor de tela, navegação por teclado.
-- Texto das lições: rascunho em `visao/api/dados/trilha.json`, para a equipe revisar.
+- Texto das lições: rascunho em `python-backend-IA/api/dados/trilha.json`, para a equipe revisar.
 
 ## 6. App para a API: assistente de IA com Gemini Flash (HTTP) [HU-21, HU-22, RF20, RF21]
 
@@ -119,7 +123,7 @@ O app só conversa com a API da equipe por HTTP (`fetch`). Ele nunca fala com o 
 ### Passo 1. Rodar a API na sua máquina (enquanto não houver VPS)
 
 ```powershell
-cd visao\api
+cd python-backend-IA\api
 python -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt
 copy .env.example .env
@@ -279,7 +283,7 @@ Mostre o `erro` do hook. A API já manda o texto pronto em português:
 
 ## 8. Câmera do poste (ESP32-CAM) para a API e API para o site (HTTP) [HU-16, HU-23, HU-24, HU-25, RF09, RF10, RF13, RF22, RF23, RF24]
 
-Decisão de 15/11/2026: a IA de visão roda nas fotos da câmera do poste. A câmera manda uma foto a cada 20 s, a API guarda (SQLite), analisa com o modelo de buracos, avisa o ESP32 do Wokwi pelo MQTT (seção 1) e, se houver buraco, o Gemini escreve o report, que vai para a Prefeitura sem revisão humana (RN08). Código em `visao/api/poste.py` e `visao/api/banco.py`.
+Decisão de 15/11/2026: a IA de visão roda nas fotos da câmera do poste. A câmera manda uma foto a cada 20 s, a API guarda (SQLite), analisa com o modelo de buracos, avisa o ESP32 do Wokwi pelo MQTT (seção 1) e, se houver buraco, o Gemini escreve o report, que vai para a Prefeitura sem revisão humana (RN08). Código em `python-backend-IA/api/poste.py` e `python-backend-IA/api/banco.py`.
 
 Enquanto não há VPS, a API roda no PC do João e fica pública por um túnel da Cloudflare. O endereço muda quando o túnel reinicia: o João avisa o novo.
 

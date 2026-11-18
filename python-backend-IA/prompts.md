@@ -1,8 +1,20 @@
-# Prompts usados com IA (visao computacional)
+# Prompts usados com IA (pasta python-backend-IA)
 
-Registro exigido pela GS: IA como copiloto. Todo codigo gerado foi revisado e precisa ser explicavel pela equipe.
+Registro exigido pela GS: IA como copiloto. Todo o código foi revisado pela equipe e precisa ser explicável.
 
-## 2026-11-12 · Escolha do dataset e notebook de treino [HU-06, RF09]
+## Parte 1: programa de Lógica (main.py)
+
+Ferramenta: Claude Code (copiloto). Todo o código foi revisado pela equipe.
+
+1. (14/11/2026) "Crie o python/main.py seguindo à risca a lista de requisitos do Prof. Cainã, sem features extras, usando os limites que já existem no firmware (edge/celia_logica.h): field3 (índice de calor) e field4 (distância livre), pesos 0,5 e 0,5, cortes 0 e 50, faixas com os mesmos nomes e cores do app."
+2. (14/11/2026) "Teste o plano B com o ThingSpeak fora do ar e a validação da configuração (pesos que não somam 1)."
+3. (15/11/2026) "Verifique se o python/main.py está de acordo com o PDF da GS e corrija os erros: arquivo corrompido derrubava o programa, a regra mínimo >= máximo não disparava ValueError, faltavam os avisos no dicionário de configuração e Ctrl+C mostrava erro." Os riscos de todas as leituras foram conferidos antes e depois: ficaram iguais.
+4. (18/11/2026) "Verifique se todos os módulos de Python batem com os requisitos (menu em loop e Sair; funções com tipo, docstring e uma tarefa cada; ThingSpeak com 2+ campos em dicionários; índice de risco, tendência e episódios; nada derruba: rede, arquivo e entrada; histórico sem duplicar, CSV, README, plano B). Nada pode quebrar." Resultado: 21 testes de falha; 6 derrubavam o programa (resposta `-1` ou `feeds` nulo do ThingSpeak, `backup.json` e `historico.json` não UTF-8, registro com `created_at` nulo, `id` de tipos misturados no histórico, Ctrl+C durante a busca) e foram corrigidos. Funções com duas tarefas foram separadas (`salvar_backup`, `registro_valido`, `extrair_medidas`, `guardar_corrompido`, `opcao_buscar`, `opcao_salvar`, `rodar_menu`). Os riscos das 36 leituras do backup foram conferidos antes e depois: ficaram iguais.
+5. (18/11/2026) "O Caio trocou o HC-SR04 pelo LDR: a luz vai no field7 e o field4 fica vazio. Troque a calçada pela luz no python/main.py." Decisões do João: luz invertida de 0 a 10 lux (abaixo de 10 lux o poste considera a rua escura), pesos 0,5 e 0,5 e uma regra depois da fórmula para sol direto com calor virar Evite, igual ao LED. Testado com 17 verificações em dados simulados (os 4 cenários do roteiro do poste, bordas, registro antigo sem field7, plano B, histórico sem duplicar, CSV e `ValueError`).
+
+## Parte 2: API, visão computacional, treino e assistente Gemini (api/ e treino/)
+
+### 2026-11-12 · Escolha do dataset e notebook de treino [HU-06, RF09]
 
 **Ferramenta:** Claude Code
 
@@ -23,7 +35,7 @@ Obs.: conjunto de teste pequeno, entao os numeros variam bastante de uma amostra
 
 **Limitacao conhecida (modelo):** ver abaixo.
 
-## 2026-11-12 · API de visao, rota /analisar [HU-05, HU-08, RF08, RF09, RNF01]
+### 2026-11-12 · API de visao, rota /analisar [HU-05, HU-08, RF08, RF09, RNF01]
 
 **Ferramenta:** Claude Code
 
@@ -35,7 +47,7 @@ Propostas ainda nao aprovadas no codigo: limite de 5 MB e confianca minima 0,25.
 
 **Limitacao conhecida:** as fotos do dataset sao de asfalto de rua, nao de calcada. O modelo pode errar em calcadas do Rio (pedra portuguesa, por exemplo).
 
-## 2026-11-12 · Remocao da deteccao de veiculos [HU-05, RF09]
+### 2026-11-12 · Remocao da deteccao de veiculos [HU-05, RF09]
 
 **Ferramenta:** Claude Code
 
@@ -45,7 +57,7 @@ Propostas ainda nao aprovadas no codigo: limite de 5 MB e confianca minima 0,25.
 
 **Resultado:** `api/main.py` agora roda so o `buracos.pt`. Resposta: `resultado` ("livre" ou "buraco"), `caixas_buracos`, `largura`, `altura`. Retestado com as 2 fotos de calcada: mesmos buracos (0,74 e 0,83).
 
-## 2026-11-12 · Publicacao MQTT do resultado [HU-07, RF10, RNF01]
+### 2026-11-12 · Publicacao MQTT do resultado [HU-07, RF10, RNF01]
 
 **Ferramenta:** Claude Code
 
@@ -55,7 +67,7 @@ Propostas ainda nao aprovadas no codigo: limite de 5 MB e confianca minima 0,25.
 
 **Limitacao (seguranca):** broker publico sem autenticacao: qualquer pessoa pode ler ou publicar no topico (risco de integridade). Versao real: broker proprio com usuario, senha e TLS (8883).
 
-## 2026-11-12 · Treino 2 com 38 imagens negativas [HU-06, RF09]
+### 2026-11-12 · Treino 2 com 38 imagens negativas [HU-06, RF09]
 
 **Ferramenta:** Claude Code (busca de fontes, download do Wikimedia, etapa 5b do notebook)
 
@@ -68,13 +80,13 @@ Teste (67 imagens de asfalto, 182 buracos): precisao 85,0% (antes 85,7%), recall
 Leitura: no asfalto o treino 2 ficou um pouco abaixo (cerca de 4 pontos de mAP@50 e de recall; conjunto pequeno, varia bastante). Escolha entre v1 e v2 depende do reteste das 6 fotos de calcada.
 Reteste na API (mesmas 6 fotos): v1 4 de 6, v2 6 de 6 (calcadao com desenhos passou a "livre"; calcada quebrada passou a ter caixa sobre o dano real). **Decisao do Joao (12/11): adotar o v2.** v1 guardado como `api/modelos/buracos_v1.pt`.
 
-## 2026-11-12 · Retain removido do MQTT [HU-07, RF10]
+### 2026-11-12 · Retain removido do MQTT [HU-07, RF10]
 
 **Prompt (resumo):** "Retire o retain da API."
 
 **Motivo:** a biblioteca do ESP32 (PubSubClient) nao informa se a mensagem e retida. Com `retain=True`, um Wokwi reiniciado receberia o ultimo resultado (talvez de horas antes) como novo e ficaria vermelho por 10 min. Agora `retain=False`; a mensagem retida que ficou no topico `celia/poste01/camera` foi apagada.
 
-## 2026-11-13 · Assistente com Gemini Flash e mini trilha de IA [HU-19, HU-21, HU-22, RF18, RF20, RF21, RN06, RN07]
+### 2026-11-13 · Assistente com Gemini Flash e mini trilha de IA [HU-19, HU-21, HU-22, RF18, RF20, RF21, RN06, RN07]
 
 **Ferramenta:** Claude Code
 
@@ -98,7 +110,7 @@ Reteste na API (mesmas 6 fotos): v1 4 de 6, v2 6 de 6 (calcadao com desenhos pas
 
 **Limitação conhecida:** a conferência da RN06 pega ids inventados, mas não um local citado só pelo nome, sem id. O prompt proíbe isso; é um risco residual.
 
-## 2026-11-13 · Correção: assistente carregando sem fim [HU-22, RF21, RNF09]
+### 2026-11-13 · Correção: assistente carregando sem fim [HU-22, RF21, RNF09]
 
 **Ferramenta:** Claude Code
 
@@ -108,7 +120,7 @@ Reteste na API (mesmas 6 fotos): v1 4 de 6, v2 6 de 6 (calcadao com desenhos pas
 
 **Correção:** cliente criado com `timeout` de 20 s e `attempts=1` (sem repetição automática); estouro de tempo também passa para o modelo reserva. Teste: `/assistente/descricao` respondeu em 13,5 s pelo reserva, telefone mascarado e `revisar_antes_de_enviar: true`.
 
-## 2026-11-13 · Guia do app para o Isaac e revisao de segredos [HU-05, HU-19, HU-21, HU-22, RNF06]
+### 2026-11-13 · Guia do app para o Isaac e revisao de segredos [HU-05, HU-19, HU-21, HU-22, RNF06]
 
 **Ferramenta:** Claude Code
 
@@ -116,7 +128,7 @@ Reteste na API (mesmas 6 fotos): v1 4 de 6, v2 6 de 6 (calcadao com desenhos pas
 
 **Resultado:** `INTEGRACAO.md` secao 7 (rodar a API, endereco no `.env` do Vite, funcao `chamarApi`, custom hook `useApi`, foto, trilha, assistente, report com revisao e tabela de erros). `.env.example` completo. Varredura: nenhuma chave do Google (padrao `AIza...`) nos arquivos nem no historico do git; `.env` ignorado pelo `visao/.gitignore`. Pendencias em `STATUS.md`. Pedido de mandar a imagem ao Gemini registrado como pendencia de decisao (conflita com RNF01), nao implementado.
 
-## 15/11/2026 · Câmera do poste (ESP32-CAM): receber, guardar, analisar e reportar [HU-16, HU-23, HU-24, HU-25, RF22, RF23, RF24]
+### 15/11/2026 · Câmera do poste (ESP32-CAM): receber, guardar, analisar e reportar [HU-16, HU-23, HU-24, HU-25, RF22, RF23, RF24]
 
 **Ferramenta:** Claude Code
 

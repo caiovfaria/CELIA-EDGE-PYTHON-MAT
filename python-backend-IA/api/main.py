@@ -18,7 +18,7 @@ Desde 13/11/2026 a mesma API tambem serve:
 - o assistente com Gemini Flash (POST /assistente/trajeto e /assistente/descricao)
   [HU-21, HU-22, RF20, RF21, RN06, RN07]. Ver assistente.py.
 
-Como rodar (dentro de visao/api):
+Como rodar (dentro de python-backend-IA/api):
     uvicorn main:app --reload
 Pagina de testes: http://127.0.0.1:8000/docs
 """

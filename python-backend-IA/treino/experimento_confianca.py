@@ -8,8 +8,8 @@ Tambem mostra o recall por tamanho do buraco (pequeno, medio, grande).
 Acerto = caixa prevista que cobre pelo menos 50% de uma caixa real (IoU >= 0,5),
 o mesmo criterio do mAP@50.
 
-Como rodar (na pasta visao/):
-    1. Crie o arquivo visao/treino/.env com a linha ROBOFLOW_API_KEY=sua_chave
+Como rodar (na pasta python-backend-IA/):
+    1. Crie o arquivo python-backend-IA/treino/.env com a linha ROBOFLOW_API_KEY=sua_chave
        (o .env nao vai para o GitHub).
     2. api\\.venv\\Scripts\\python treino\\experimento_confianca.py
 """
@@ -39,7 +39,7 @@ def baixar_dataset() -> str:
     load_dotenv(os.path.join(PASTA, ".env"))
     chave = os.getenv("ROBOFLOW_API_KEY")
     if not chave:
-        raise SystemExit("Falta ROBOFLOW_API_KEY no arquivo visao/treino/.env")
+        raise SystemExit("Falta ROBOFLOW_API_KEY no arquivo python-backend-IA/treino/.env")
     from roboflow import Roboflow
 
     projeto = Roboflow(api_key=chave).workspace("kugan").project("pothole-mftcc")
