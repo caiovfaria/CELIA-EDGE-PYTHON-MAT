@@ -38,19 +38,24 @@ Canal público `3577155`, leitura sem chave:
 
 - Últimos registros: https://api.thingspeak.com/channels/3577155/feeds.json?results=20
 - Último status: https://api.thingspeak.com/channels/3577155/fields/5/last.json
+- Última luminosidade: https://api.thingspeak.com/channels/3577155/fields/7/last.json
+
+Desde 18/11/2026 o poste mede luz (LDR) e calor (DHT22). O HC-SR04 saiu: o buraco na calçada é visto pela câmera com o modelo de IA (motivo 5).
 
 | Campo | Conteúdo |
 | --- | --- |
 | field1 | Temperatura (°C, 1 casa decimal) |
 | field2 | Umidade (%, 1 casa decimal) |
 | field3 | Índice de calor (°C, 1 casa decimal) |
-| field4 | Distância livre na calçada (cm, inteiro) |
+| field4 | Não é usado pelo poste desde 18/11/2026 (vem vazio). Os registros 1 a 39 têm a distância livre em cm, da versão antiga |
 | field5 | Status do trecho: 0 Acessível (verde), 1 Atenção (amarelo), 2 Evite (vermelho) |
-| field6 | Motivo: 0 nenhum, 1 calçada, 2 calor, 3 calçada e calor, 5 buraco (câmera). O 4 (veículo) foi removido em 12/11/2026 |
+| field6 | Motivo: 0 nenhum, 1 luz (rua escura, ou sol direto junto com calor), 2 calor, 3 luz e calor, 5 buraco (câmera). O 4 (veículo) foi removido em 12/11/2026. Até o registro 39, o motivo 1 era calçada |
+| field7 | Luminosidade (lux, inteiro): abaixo de 10 é rua escura; a partir de 25.000 é sol direto |
 
 Cuidados de quem lê:
 
 - Os valores vêm como texto (`"26.0"`, `"2"`): converter para número.
+- O Python de Lógica lê o field3 e o field7 e pula os registros sem eles (os antigos, de 1 a 39).
 - Se um sensor falhar, o campo dele vem `null` naquele registro. Status e motivo continuam vindo.
 - O poste envia a cada 20 s e não envia sem dado novo. Sem registro há mais de 10 min (pelo `created_at`, em UTC), o trecho fica cinza.
 - Registros antigos de teste têm valores absurdos (80 °C, índice de calor 708). Quem lê não pode quebrar com isso.

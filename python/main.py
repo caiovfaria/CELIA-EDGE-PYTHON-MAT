@@ -5,7 +5,10 @@ risco de cada leitura e mostra a faixa que o cidadao ve no app: Acessivel, Atenc
 
 Medidas usadas (2 campos do canal):
     field3: indice de calor (graus C), calculado no ESP32 a partir da temperatura e umidade
-    field4: distancia livre na calcada (cm), medida pelo HC-SR04
+    field7: luminosidade (lux), medida pelo LDR
+
+Desde 18/11/2026 o poste mede luz (LDR) no lugar da distancia (HC-SR04). O buraco na
+calcada e visto pela camera com o modelo de IA (field6 = 5), nao por estes sensores.
 
 Os limites NAO foram inventados aqui: sao os mesmos do firmware do poste
 (edge/celia_logica.h), para o Python, o ESP32 e o app falarem a mesma lingua (RN01).
@@ -35,14 +38,19 @@ CONFIG = {
     "arquivo_relatorio": os.path.join(PASTA, "relatorio.csv"),
     # Cada medida: campo do canal, faixa de "min" a "max" (min sempre menor que max) e peso.
     # Calor: 32 C e onde a Atencao comeca no ESP32; 41 C e onde comeca o Evite.
-    # Calcada: "invertida" (quanto MENOR a distancia, maior o risco). 120 cm e calcada livre
-    # (NBR 9050, faixa livre de 1,20 m); abaixo de 90 cm o ESP32 considera bloqueada.
+    # Luz: "invertida" (quanto MENOS luz, maior o risco). Abaixo de 10 lux o ESP32 considera a
+    # rua escura (nao da para ver buraco, degrau ou desnivel): 0 lux -> nivel 100; 10 lux ou
+    # mais -> nivel 0. O sol sozinho nao piora o trecho (igual ao ESP32).
     "medidas": {
         "calor": {"campo": "field3", "min": 32.0, "max": 41.0, "peso": 0.5, "unidade": "C",
                   "invertida": False},
-        "calcada": {"campo": "field4", "min": 90.0, "max": 120.0, "peso": 0.5, "unidade": "cm",
-                    "invertida": True},
+        "luz": {"campo": "field7", "min": 0.0, "max": 10.0, "peso": 0.5, "unidade": "lux",
+                "invertida": True},
     },
+    # Regra do sol do ESP32 (edge/celia_logica.h): sol direto (25.000 lux ou mais) junto com
+    # calor (indice de 32 C ou mais) deixa o trecho em Evite. A formula linear nao enxerga o
+    # sol (ela so mede o escuro), entao esta regra vem depois dela.
+    "regra_sol": {"lux_minimo": 25000.0, "calor_minimo": 32.0},
     # Faixas do risco (0 a 100). Com pesos 0,5 e 0,5, uma medida sozinha no limite do Evite
     # do ESP32 da risco 50: por isso Evite comeca em 50. Qualquer risco acima de 0 e Atencao.
     "corte_atencao": 0.0,
@@ -54,7 +62,7 @@ CONFIG = {
         "perigo": "Trecho dificil agora. Prefira outro caminho.",
     },
     # Valores fora disso sao lixo de teste ou falha do sensor (o canal tem registros assim).
-    "faixa_valida": {"calor": (-10.0, 60.0), "calcada": (0.0, 400.0)},
+    "faixa_valida": {"calor": (-10.0, 60.0), "luz": (0.0, 100000.0)},
 }
 
 # Mesmos nomes, icones e cores do app (src/domain/faixas.js e tokens.css do front).
@@ -93,8 +101,8 @@ def validar_config(config: dict) -> None:
 def calcular_nivel(valor: float, minimo: float, maximo: float, invertida: bool = False) -> float:
     """Nivel de 0 a 100: nivel = (valor - min) / (max - min) * 100, limitado a 0 e 100.
 
-    invertida=True (calcada): menos espaco e mais risco, entao o nivel vira 100 - nivel.
-    Ex.: calcada com 90 cm -> nivel 100; com 120 cm -> nivel 0.
+    invertida=True (luz): menos luz e mais risco, entao o nivel vira 100 - nivel.
+    Ex.: luz com 0 lux -> nivel 100; com 5 lux -> nivel 50; com 10 lux ou mais -> nivel 0.
     """
     nivel = (valor - minimo) / (maximo - minimo) * 100
     nivel = max(0.0, min(100.0, nivel))
@@ -117,6 +125,17 @@ def classificar(risco: float, config: dict) -> str:
     if risco > config["corte_atencao"]:
         return "atencao"
     return "normal"
+
+
+def aplicar_regra_sol(faixa: str, medidas: dict, config: dict) -> str:
+    """Sol direto com calor vira Evite, como no LED do poste. Nos outros casos, mantem a faixa.
+
+    Ex.: 50.000 lux e 33 C -> risco 5,6 (Atencao pela formula), mas o poste mostra Evite.
+    """
+    regra = config["regra_sol"]
+    if medidas["luz"] >= regra["lux_minimo"] and medidas["calor"] >= regra["calor_minimo"]:
+        return "perigo"
+    return faixa
 
 
 def buscar_thingspeak(config: dict) -> list[dict]:
@@ -211,7 +230,7 @@ def montar_leituras(feeds: list[dict], config: dict) -> list[dict]:
             "horario": feed["created_at"],
             "medidas": medidas,
             "risco": risco,
-            "faixa": classificar(risco, config),
+            "faixa": aplicar_regra_sol(classificar(risco, config), medidas, config),
         })
     return leituras
 
@@ -237,11 +256,11 @@ def texto_faixa(faixa: str) -> str:
 
 def mostrar_leituras(leituras: list[dict]) -> None:
     """Imprime uma tabela com as leituras, o risco e a faixa."""
-    print(f"\n{'ID':>4}  {'Horario (UTC)':<20} {'Calor':>7} {'Calcada':>8} {'Risco':>6}  Faixa")
+    print(f"\n{'ID':>4}  {'Horario (UTC)':<20} {'Calor':>7} {'Luz':>10} {'Risco':>6}  Faixa")
     for leitura in leituras:
         m = leitura["medidas"]
         print(f"{leitura['id']:>4}  {leitura['horario']:<20} {m['calor']:>5.1f} C "
-              f"{m['calcada']:>5.0f} cm {leitura['risco']:>6.1f}  {texto_faixa(leitura['faixa'])}")
+              f"{m['luz']:>6.0f} lux {leitura['risco']:>6.1f}  {texto_faixa(leitura['faixa'])}")
 
 
 def contar_faixas(leituras: list[dict]) -> dict:
@@ -334,12 +353,12 @@ def salvar_relatorio(leituras: list[dict], config: dict) -> None:
     """Grava o relatorio.csv com uma linha por leitura (abre no Excel)."""
     with open(config["arquivo_relatorio"], "w", newline="", encoding="utf-8-sig") as arquivo:
         escritor = csv.writer(arquivo, delimiter=";")
-        escritor.writerow(["id", "horario", "indice_calor_c", "distancia_livre_cm",
+        escritor.writerow(["id", "horario", "indice_calor_c", "luminosidade_lux",
                            "risco", "faixa", "cor"])
         for leitura in leituras:
             f = FAIXAS[leitura["faixa"]]
             escritor.writerow([leitura["id"], leitura["horario"], leitura["medidas"]["calor"],
-                               leitura["medidas"]["calcada"], leitura["risco"], f["nome"], f["cor"]])
+                               leitura["medidas"]["luz"], leitura["risco"], f["nome"], f["cor"]])
 
 
 def mostrar_menu() -> str:
