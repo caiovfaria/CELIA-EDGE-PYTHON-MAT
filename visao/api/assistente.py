@@ -84,7 +84,7 @@ class Trecho(BaseModel):
 class Local(BaseModel):
     id: str = Field(max_length=50)
     nome: str = Field(max_length=120)
-    tipo: Literal["banheiro", "descanso", "capacite-se"]
+    tipo: Literal["banheiro", "descanso", "capacite-se", "lazer"]
     acessibilidade: str = Field(default="", max_length=200)
     endereco: str = Field(default="", max_length=200)
 
