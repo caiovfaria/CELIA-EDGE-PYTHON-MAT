@@ -277,6 +277,79 @@ Mostre o `erro` do hook. A API já manda o texto pronto em português:
 1. Se consegue montar `trechos` e `locais` no formato da seção 6 (PROPOSTA).
 2. Em que endereço o app vai ficar hospedado (para o CORS).
 
+## 8. Câmera do poste (ESP32-CAM) para a API e API para o site (HTTP) [HU-16, HU-23, HU-24, HU-25, RF09, RF10, RF13, RF22, RF23, RF24]
+
+Decisão de 15/11/2026: a IA de visão roda nas fotos da câmera do poste. A câmera manda uma foto a cada 20 s, a API guarda (SQLite), analisa com o modelo de buracos, avisa o ESP32 do Wokwi pelo MQTT (seção 1) e, se houver buraco, o Gemini escreve o report, que vai para a Prefeitura sem revisão humana (RN08). Código em `visao/api/poste.py` e `visao/api/banco.py`.
+
+Enquanto não há VPS, a API roda no PC do João e fica pública por um túnel da Cloudflare. O endereço muda quando o túnel reinicia: o João avisa o novo.
+
+### 8.1 ESP32-CAM manda a foto (firmware do Caio)
+
+| Item | Valor |
+| --- | --- |
+| Rota | `POST /poste/captura` (funciona por `http://` e por `https://` no endereço do túnel) |
+| Corpo | a foto JPEG pura (`fb->buf`, tamanho `fb->len`), até 1 MB |
+| Cabeçalhos | `Content-Type: image/jpeg`, `X-Chave: <POSTE_CHAVE>` (combinada no privado, nunca no git), `X-Poste: poste01` |
+| Frequência | uma foto a cada 20 s |
+
+Respostas:
+
+| Código | Quando | Corpo |
+| --- | --- | --- |
+| 201 | deu certo | `{id, poste, recebida_em, largura, altura, resultado, caixas, mqtt_enviado, report}` |
+| 400 | corpo vazio, não é imagem ou nome de poste inválido | `{detail}` |
+| 401 | chave errada ou ausente | `{detail}` |
+| 413 | foto maior que 1 MB | `{detail}` |
+| 415 | imagem que não é JPEG | `{detail}` |
+| 503 | API sem `POSTE_CHAVE` no `.env` | `{detail}` |
+
+- `resultado`: `"livre"`, `"buraco"` ou `null` (a foto chegou com o modelo aquecendo e foi guardada sem análise).
+- `report`: `"gerando"` (o Gemini está escrevendo em segundo plano), `"nao se aplica: calcada livre"`, `"pulado: ja houve report deste poste nos ultimos 10 min (RN09)"` ou `"pulado: modelo aquecendo"`.
+- RN09 (PROPOSTA a validar): no máximo um report automático a cada 10 min por poste.
+
+### 8.2 Site lê as capturas e os reports (área da Prefeitura, Isaac)
+
+Sem chave: são fotos da calçada pública e os reports que a própria Prefeitura mostra.
+
+`GET /poste/capturas?poste=poste01&limite=10` (limite de 1 a 100), da mais nova para a mais velha:
+
+```json
+[
+  {
+    "id": 18,
+    "poste": "poste01",
+    "recebida_em": "2026-11-16T02:31:43+00:00",
+    "resultado": "buraco",
+    "caixas": [{"x1": 0, "y1": 60, "x2": 148, "y2": 189, "confianca": 0.81}],
+    "mqtt_enviado": true,
+    "largura": 800,
+    "altura": 600,
+    "foto": "/poste/capturas/18/foto"
+  }
+]
+```
+
+`GET /poste/capturas/{id}/foto`: o JPEG. Use `API_URL + foto` direto numa tag `<img>`. As caixas estão em pixels dessa foto (`largura` × `altura`); em capturas antigas o tamanho pode vir `null`, então use o tamanho natural da imagem carregada.
+
+`GET /poste/reportes?limite=20`, do mais novo para o mais velho:
+
+```json
+[
+  {
+    "id": 1,
+    "poste": "poste01",
+    "local": "Rua Barão do Bom Retiro, ponto de ônibus, Grajaú, Rio de Janeiro",
+    "texto": "Há um buraco na calçada na Rua Barão do Bom Retiro...",
+    "criado_em": "2026-11-16T02:24:07+00:00",
+    "captura": {"id": 10, "recebida_em": "...", "caixas": [], "largura": 800, "altura": 600, "foto": "/poste/capturas/10/foto"}
+  }
+]
+```
+
+Sugestão para o site: consultar as duas rotas a cada 5 s. Sem captura recente (ou API fora do ar), a área da Prefeitura mostra a câmera simulada (RNF10). Horários em UTC: converter para o horário do Rio na tela.
+
+O `local` do poste é DADO DE EXEMPLO (o mesmo do app); os pontos reais serão definidos com a Prefeitura (RN04).
+
 ## Divergências a resolver
 
 | Tema | Como está em `AGENTS.md` | Como está na API hoje | Por quê |
