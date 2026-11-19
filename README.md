@@ -24,6 +24,7 @@
 
 <p align="center">
   <a href="https://celia-frontend.vercel.app"><b>Abrir o app</b></a> ·
+  <a href="https://2-29-156-251.sslip.io/docs">API no ar</a> ·
   <a href="https://wokwi.com/projects/481054670710338561">Simulação no Wokwi</a> ·
   <a href="https://thingspeak.mathworks.com/channels/3577155">Canal público no ThingSpeak</a> ·
   <a href="edge/ROTEIRO_DEMO.md">Roteiro da demonstração</a> ·
@@ -217,6 +218,7 @@ App em React publicado em [celia-frontend.vercel.app](https://celia-frontend.ver
 
 | Parte | Evidência |
 | --- | --- |
+| API na VPS | No ar com HTTPS; testada pela internet e pelo app publicado, inclusive depois de reiniciar o servidor. [Detalhes](#api-no-ar-vps) |
 | Modelo de buracos | Precisão 85,0%, recall 69,8% e mAP@50 79,9% no teste; 6 de 6 nas fotos de calçada da equipe |
 | Assistente Gemini | Rodadas com o Gemini real: ids corretos, sem inventar locais, recusa de pedido fora das regras e dado pessoal mascarado |
 | API | 37 testes de falha (rede, Gemini fora do ar, câmera do poste, SQLite e entradas maliciosas), todos passando |
@@ -232,6 +234,40 @@ App em React publicado em [celia-frontend.vercel.app](https://celia-frontend.ver
 3. Envie a foto de qualquer outra coisa, como um caderno: a IA não encontra buraco, e o Gemini não escreve nada.
 4. Pergunte ao assistente qual o caminho mais acessível ou onde há um banheiro acessível.
 5. Para ver o poste reagir, siga o [roteiro do Wokwi](edge/ROTEIRO_DEMO.md).
+
+## API no ar (VPS)
+
+A API com as duas IAs está publicada e é usada pelo [app](https://celia-frontend.vercel.app):
+
+- **Endereço:** https://2-29-156-251.sslip.io
+- **Documentação interativa:** https://2-29-156-251.sslip.io/docs
+
+```
+Navegador (app na Vercel) ──HTTPS 443──► Caddy ──► API FastAPI (só escuta dentro do servidor)
+                                                      ├── modelo YOLOv8 de buracos
+                                                      ├── assistente Gemini
+                                                      └── SQLite (capturas e reportes)
+```
+
+| Camada | Como foi feito |
+| --- | --- |
+| **Servidor** | VPS na Hetzner Cloud com Ubuntu LTS, 2 vCPUs e 4 GB de RAM. O modelo de IA roda no processador (PyTorch só de CPU) |
+| **HTTPS** | O Caddy atende a porta 443 com um certificado do Let's Encrypt, obtido e renovado automaticamente. O nome vem do sslip.io, que transforma o IP do servidor num domínio. `http` redireciona para `https` |
+| **Processo** | Um serviço do systemd liga a API quando o servidor inicia e a religa se ela cair. Ela roda com um usuário próprio, sem poderes de administrador |
+| **Rede** | Firewall com só três portas abertas: SSH, HTTP e HTTPS. A porta da API fica fechada para a internet, e só o Caddy fala com ela |
+| **Acesso ao servidor** | SSH só com chave criptográfica protegida por senha. Login por senha desativado |
+| **Segredos** | A chave do Gemini e a chave da câmera do poste ficam só num arquivo `.env` no servidor, legível apenas pelo usuário da API. Nunca vão para o GitHub nem para o app |
+| **CORS** | Só o app publicado e o ambiente local de desenvolvimento podem chamar a API pelo navegador |
+| **Versões** | As bibliotecas foram instaladas nas mesmas versões que passaram nos testes da API |
+
+**Testes do go-live (19/11/2026), feitos pela internet:** foto com buraco detectada (93% de confiança, 0,3 s no servidor), descrição escrita pelo Gemini, aviso MQTT enviado ao poste, CORS liberado só para o app, porta da API fechada para fora e volta automática de tudo depois de reiniciar o servidor. No app publicado, os quatro cenários do reporte passaram: foto com buraco, foto sem buraco (o Gemini não escreve), obstáculo e Gemini fora do ar (pop-up com texto padrão).
+
+**O que os registros mostraram:** minutos depois de o certificado ser emitido, robôs já procuravam caminhos como `/.env` e `/.git/config`. Todos receberam 404, porque só o código da API foi enviado ao servidor, sem o repositório nem arquivos de configuração, e a API não serve nenhuma pasta.
+
+**Para atualizar a API no servidor:**
+1. Gerar o pacote só com o código: `git archive` da pasta `python-backend-IA/api`.
+2. Enviar ao servidor por SSH (`scp`) e extrair na pasta da API, mantendo o `.env`, o ambiente Python, as capturas e o banco.
+3. Reiniciar o serviço da API e conferir a rota `/`, que responde `"modelo_pronto": true`.
 
 ## Como rodar
 
