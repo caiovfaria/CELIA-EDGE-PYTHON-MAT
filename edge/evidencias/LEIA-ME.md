@@ -17,3 +17,21 @@ Os valores de lux e ADC do Wokwi bateram com os do teste no computador (`tests/t
 Na mesma rodada, a volta de 5 lux para 500 lux levou exatamente 15 s para valer (`confirmando luz 15s`, `10s`, `5s` e depois `vale normal`), como pede o modo demonstração.
 
 Observação: mudar a temperatura no DHT22 com a simulação rodando não chegou ao poste nesta rodada (a luz mudava na hora). Para os passos com 33 °C, a temperatura foi colocada no `diagram.json` com a simulação parada. O projeto salvo e o `diagram.json` do repositório ficam com 26 °C.
+
+## ThingSpeak: registros do poste no canal (18/11/2026, 23h13 a 23h21)
+
+Rodada no Wokwi com a chave colada pelo aluno só durante a simulação (a IA não viu nem digitou a chave, e o projeto não foi salvo com ela). O poste gravou os registros 40 a 59 no canal público 3577155, um a cada 20 a 25 s, passando pelos 4 status. A luz e a temperatura foram mudadas nos controles do Wokwi com a simulação rodando.
+
+| Registros | Situação no Wokwi | Status (field5) | Motivo (field6) | Luz (field7) |
+|---|---|---|---|---|
+| 40 a 43 | 500 lux, 26 °C | 0 acessível | 0 nenhum | 499 lux |
+| 44 | luz mudou para 5 lux, ainda confirmando | 0 acessível | 0 nenhum | 5 lux |
+| 45 a 48 | 5 lux, 26 °C | 1 atenção | 1 luz | 5 lux |
+| 49 e 50 | 5 lux, 33 °C (índice de calor 36,3 °C) | 1 atenção | 3 luz e calor | 5 lux |
+| 51 a 54 | 500 lux, 33 °C | 1 atenção | 2 calor | 501 lux |
+| 55 a 59 | 50.000 lux, 33 °C | 2 evite | 3 luz e calor | 50.064 lux |
+
+- `thingspeak_graficos.png`: gráficos públicos do canal com esses 20 registros (temperatura, umidade, índice de calor, status, motivo e luminosidade).
+- `thingspeak_registros_40a59.json`: os mesmos registros, baixados da API pública do canal.
+
+O registro 44 mostra a confirmação da luz: a leitura já era 5 lux, mas o status só mudou depois de 15 s (registro 45). Os gráficos do canal mostram os últimos 20 registros. O campo 4 foi desligado no canal, porque o poste não usa sensor de distância.
