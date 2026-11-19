@@ -50,9 +50,20 @@
 | **Cidade e bairro** | Rio de Janeiro. Os testes são no bairro do Grajaú. |
 | **Cidadão beneficiado** | Pessoas com deficiência física ou mobilidade reduzida que vão ao trabalho a pé e de ônibus. E a Prefeitura, que recebe os reportes e acompanha os postes. |
 | **Problema em uma frase** | A pessoa sai de casa sem saber se a calçada e o ponto de ônibus do caminho até o trabalho estão seguros, e os buracos que encontra raramente chegam a quem pode consertar. |
+| **Objetivo** | Avisar a pessoa antes de sair de casa, no app e no poste do ponto de ônibus, se o caminho até o trabalho está acessível, pede atenção ou deve ser evitado, e fazer os buracos da calçada chegarem à Prefeitura para serem consertados. |
 | **Como funciona** | Uma IA de visão treinada pela equipe encontra buracos nas fotos da calçada, tiradas pelo cidadão ou pela câmera do poste. Um assistente com o Gemini planeja o trajeto e escreve os reportes para a Prefeitura. Postes nos pontos de ônibus medem o calor e a luz, e o app junta tudo num mapa com a rota mais acessível. |
+| **O que cada parte faz** | **IA de visão (YOLOv8n):** encontra buracos nas fotos da calçada.<br>**Assistente Gemini:** planeja o trajeto e escreve os reportes para a Prefeitura.<br>**API em Python (FastAPI e SQLite):** recebe as fotos, roda as duas IAs, guarda as capturas e os reportes e avisa o poste por MQTT.<br>**Câmera do poste (ESP32-CAM):** fotografa a calçada a cada 20 s.<br>**Poste (ESP32 no Wokwi, com DHT22, LDR e LED RGB):** mede o calor e a luz, decide o status do trecho, acende o LED e envia as leituras ao ThingSpeak.<br>**ThingSpeak:** guarda o histórico do poste e mostra os gráficos.<br>**Programa de Lógica (Python):** calcula o índice de risco de cada leitura do poste.<br>**App (React):** mostra o mapa com o status dos trechos e a rota mais acessível, recebe os reportes com foto e tem a área da Prefeitura.<br>**Cálculo:** modela o calor no ponto de ônibus com limites, derivadas e integrais. |
+| **Link do repositório** | [github.com/caiovfaria/CELIA-EDGE-PYTHON-MAT](https://github.com/caiovfaria/CELIA-EDGE-PYTHON-MAT) · app: [github.com/Isaacisrael10/celia-frontend](https://github.com/Isaacisrael10/celia-frontend) |
 | **Indicador de impacto** | Quantas vezes o trajeto ficou inacessível no horário de ida ao trabalho, medido no histórico do poste. |
 | **ODS** | 10 (Redução das desigualdades), 11 (Cidades e comunidades sustentáveis) e 8 (Trabalho decente e crescimento econômico) |
+
+### Como a C.E.L.I.A. contribui com os ODS
+
+| ODS | Como a C.E.L.I.A. contribui |
+| --- | --- |
+| **10 · Redução das desigualdades** | A pessoa com deficiência passa a saber, antes de sair, o que hoje só descobre na rua: onde há buraco, calor forte ou rua escura, e qual é a rota mais acessível. A mini trilha de IA ajuda a diminuir a diferença no acesso ao trabalho. Meta 10.2: inclusão social e econômica de todos, independentemente de deficiência. |
+| **11 · Cidades e comunidades sustentáveis** | Os postes nos pontos de ônibus monitoram o calor e a luz, a câmera encontra buracos e a Prefeitura recebe os reportes para decidir o que consertar primeiro. Metas 11.2 (transporte acessível, com atenção às pessoas com deficiência) e 11.7 (espaços públicos seguros, inclusivos e acessíveis). |
+| **8 · Trabalho decente e crescimento econômico** | O projeto começa pelo trajeto até o trabalho, onde a falta de acessibilidade afasta a pessoa do emprego, e a mini trilha de IA ajuda a pessoa a permanecer nele. Meta 8.5: emprego pleno e trabalho decente para todos, inclusive pessoas com deficiência. |
 
 ## Por que a C.E.L.I.A. existe
 
