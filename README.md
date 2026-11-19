@@ -197,7 +197,7 @@ App em React publicado em [celia-frontend.vercel.app](https://celia-frontend.ver
 | Visão computacional | Ultralytics YOLOv8n, Google Colab (GPU T4), Roboflow Universe, Wikimedia Commons |
 | LLM | Google Gemini Flash (biblioteca google-genai), com três modelos em sequência |
 | Backend | Python 3.13, FastAPI, Uvicorn, SQLite, Pillow |
-| IoT | ESP32, DHT22, LDR, FreeRTOS, Wokwi, ThingSpeak, MQTT (HiveMQ, PubSubClient e paho-mqtt), ESP32-CAM |
+| IoT | ESP32, DHT22, LDR, LED RGB, FreeRTOS, Wokwi, ThingSpeak, MQTT (HiveMQ, PubSubClient e paho-mqtt), ESP32-CAM |
 | Lógica e Cálculo | Python, requests, json, csv, Open-Meteo |
 | Front-end | React, Vite, custom hooks, MockAPI, Vercel |
 | Testes | FastAPI TestClient, g++ com Arduino simulado |
