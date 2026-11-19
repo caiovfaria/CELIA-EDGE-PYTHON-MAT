@@ -1,37 +1,82 @@
 C.E.L.I.A. - modelagem matematica
 ============================================================
 
-[0] A formula do indice de calor e a mesma do ESP32?
+[0a] A formula do indice de calor e a mesma do ESP32? (registros 1 a 59 do canal)
   T (C)  U (%)   IC do canal   IC calculado   registro
    26.0   45.0          25.8           25.8   35
    26.0   50.0          26.0           26.0   1
    28.0   65.0          30.0           30.0   20
    32.0   50.0          34.4           34.4   22
+   33.0   50.0          36.3           36.3   49
    34.0   60.0          42.2           42.2   24
    38.0   50.0          48.6           48.6   33
    44.3   50.0          70.5           70.5   8
    80.0    0.0          41.4           41.4   9
    80.0  100.0         708.7          708.7   10
-  9 de 9 pares diferentes batem com o ESP32 (1 casa decimal).
+  10 de 10 pares diferentes batem com o ESP32 (1 casa decimal).
 
-[1a] Limites laterais da regra da calcada (calor normal)
-  d -> 120 pela esquerda (h = [1, 0.1, 0.01, 0.001]): status [1, 1, 1, 1]
-  d -> 120 pela direita  (h = [1, 0.1, 0.01, 0.001]): status [0, 0, 0, 0]
-  status no ponto: 0  ->  limites laterais 1 e 0: diferentes, entao nao existe limite em 120 cm
-  d -> 90 pela esquerda (h = [1, 0.1, 0.01, 0.001]): status [2, 2, 2, 2]
-  d -> 90 pela direita  (h = [1, 0.1, 0.01, 0.001]): status [1, 1, 1, 1]
-  status no ponto: 1  ->  limites laterais 2 e 1: diferentes, entao nao existe limite em 90 cm
+[0b] A conta do LDR e a mesma do ESP32? (registros 40 a 59, luz no field7)
+  ADC (serial)   lux pela formula   field7 no canal   registros
+          1001                499               499   40 a 43 (4)
+          3645                  5                 5   44 a 50 (7)
+           999                501               501   51 a 54 (4)
+            52              50064             50064   55 a 59 (5)
+  4 de 4 situacoes batem com o poste.
 
-[1b] Perto do limite, um ruido minimo troca o status
-  Calcada real com 119.93 cm: eco ideal de 7051.9 us.
-  ruido no eco (us)   distancia registrada (cm)   status
-               -3.0                         119   1
-               -1.5                         119   1
-                0.0                         120   0
-                1.5                         120   0
-                3.0                         120   0
+[1a] Limites laterais da regra da luz (E = iluminancia na calcada, em lux)
+  E -> 10 lux, calor normal:
+    pela esquerda (h = [1, 0.1, 0.01, 0.001]): status [1, 1, 1, 1]
+    pela direita  (h = [1, 0.1, 0.01, 0.001]): status [0, 0, 0, 0]
+    no ponto: 0;  limites laterais 1 e 0: diferentes: NAO existe limite (a cor salta)
+  E -> 10 lux, com calor (IC >= 32 C):
+    pela esquerda (h = [1, 0.1, 0.01, 0.001]): status [1, 1, 1, 1]
+    pela direita  (h = [1, 0.1, 0.01, 0.001]): status [1, 1, 1, 1]
+    no ponto: 1;  limites laterais 1 e 1: iguais: o limite existe e vale 1
+  E -> 25000 lux, calor normal:
+    pela esquerda (h = [100, 10, 1, 0.1]): status [0, 0, 0, 0]
+    pela direita  (h = [100, 10, 1, 0.1]): status [0, 0, 0, 0]
+    no ponto: 0;  limites laterais 0 e 0: iguais: o limite existe e vale 0
+  E -> 25000 lux, com calor (IC >= 32 C):
+    pela esquerda (h = [100, 10, 1, 0.1]): status [1, 1, 1, 1]
+    pela direita  (h = [100, 10, 1, 0.1]): status [2, 2, 2, 2]
+    no ponto: 2;  limites laterais 1 e 2: diferentes: NAO existe limite (a cor salta)
 
-[1c] Comportamento extremo do indice de calor (limite no infinito)
+[1b] Perto do limite, um passo do ADC troca a cor
+  Um passo do ADC vale 0.81 mV no pino do LDR.
+  perto de 10 lux, calor normal:
+       ADC      lux   status
+      3410       10   0
+      3411       10   0
+      3412       10   0
+      3413        9   1
+      3414        9   1
+  perto de 25.000 lux, com calor:
+       ADC      lux   status
+        81    26308   2
+        82    25841   2
+        83    25389   2
+        84    24949   1
+        85    24522   1
+
+[1c] Comportamento extremo do modelo do LDR (limites nas pontas do ADC)
+  lux(a) = 99.66 * ((4095 - a) / a)^(1/0.7)
+  a -> 0+ (muita luz):
+    a = 100    lux = 19338
+    a = 10     lux = 535554
+    a = 1      lux = 14412515
+    a = 0.1    lux = 386765367
+    a = 0.01   lux = 10376064021
+    lim a->0+ lux(a) = +infinito
+  a -> 4095- (escuro):
+    a = 4000   lux = 0.4765
+    a = 4090   lux = 0.0069
+    a = 4094   lux = 0.0007
+    a = 4094.9 lux = 0.0000
+    lim a->4095- lux(a) = 0
+  O modelo passa de 100000 lux quando a < 32.2: por isso o poste corta em 100000 lux (teto).
+  Na conta do poste: ADC 33 -> 96508 lux;  ADC 32 -> 100000 lux (teto);  ADC 0 -> 100000 lux.
+
+[1d] Comportamento extremo do indice de calor (limite no infinito)
   c2(U) muda de sinal em U = 5.62 %.
   U < 5.6 %: lim T->inf IC = -infinito;  U > 5.6 %: lim T->inf IC = +infinito.
   Com U = 0 %, IC'(T) = 0 em T = 65.5 C (maximo): acima disso o IC CAI quando a temperatura sobe.
@@ -93,6 +138,22 @@ C.E.L.I.A. - modelagem matematica
     dIC/dT = 2.713 C por C (numerico 2.713);  dIC/dU = 0.178 C por % (numerico 0.178)
     erro do DHT22 (+-0.5 C, +-2.0 %): dIC ~ 2.71*0.5 + 0.18*2.0 = 1.71 C  ->  IC entre 31.5 e 34.9 C
 
+[2e] Derivada do LDR: quantos lux vale cada passo do ADC
+  lux     ADC a(lux)   |lux'(a)| (lux por passo)   variacao por passo   passos entre 9 e 10 lux / 24000 e 25000 lux
+  5           3646.1                       0.018               0.357 %   
+  10          3412.5                       0.025               0.251 %   41 passos
+  500         1000.6                       0.945               0.189 %   
+  25000         83.9                     434.664               1.739 %   2.4 passos
+  50000         52.0                    1390.072               2.780 %   
+  Conferencia pelo limite do quociente de diferencas em a0 = 83.88 (25000 lux):
+    lux'(a0) pela formula = -434.664 lux por passo
+    h = 10     [lux(a0+h) - lux(a0)] / h = -379.120
+    h = 1      [lux(a0+h) - lux(a0)] / h = -428.433
+    h = 0.1    [lux(a0+h) - lux(a0)] / h = -434.033
+    h = 0.01   [lux(a0+h) - lux(a0)] / h = -434.601
+    h = 0.001  [lux(a0+h) - lux(a0)] / h = -434.657
+  Na conta do poste: ADC 83 -> 25389 lux e ADC 84 -> 24949 lux (um passo = 440 lux).
+
 [3a] Calor acumulado acima de 32 C no dia (graus-hora), de 0h a 23h
   18/11/2023 (onda de calor): exata (modelo) = 138.58 C.h;  Simpson (modelo) = 138.58;  trapezios (dados horarios) = 138.85
   verão médio (dez/2023 a fev/2024): exata (modelo) = 5.49 C.h;  Simpson (modelo) = 5.49;  trapezios (dados horarios) = 5.14
@@ -112,4 +173,4 @@ C.E.L.I.A. - modelagem matematica
     chegando as 14h00: 0.26 C.h  (IC medio na espera = 33.1 C)
     chegando as 17h00: 0.00 C.h  (IC medio na espera = 30.1 C)
 
-Graficos salvos em graficos/: fig1 a fig5.
+Graficos salvos em graficos/: fig1 a fig6.
