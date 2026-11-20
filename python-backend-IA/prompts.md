@@ -239,3 +239,14 @@ Restrição: nenhuma alteração pode quebrar o funcionamento atual."
 **Validação:** 35 de 35, mais a trilha corrompida, o ouvinte sem internet e uma rodada com o Gemini real (trajeto e descrição responderam 200).
 
 **Correção na mesma data, achada no teste pelo app:** o google-genai 3.x lança os erros de rede pela biblioteca `httpx2`, e não pela `httpx`. O `except httpx.TimeoutException` nunca pegava o timeout do Gemini, que virava erro 500 na tela de reportar. Agora o código reconhece as duas, e os testes passaram a usar os erros reais da `httpx2` (37 de 37).
+
+### 19/11/2026 · READMEs com a VPS, a ESP32-CAM e a arquitetura C4 [HU-17, HU-23, RNF02]
+
+**Ferramenta:** Claude Code (com o conector do IcePanel para os diagramas C4).
+
+**Prompt:** "Atualize o README da main falando da VPS e do vídeo da ESP32-CAM sendo montada (prova de que foi usada e faz parte do projeto além do Wokwi). Deixe centralizado; se precisar, use logos das stacks. Faça o mesmo no README de Python, falando do backend (IA, LLM, visão computacional, API, MockAPI) e menos da lógica: primeiro o backend, depois a lógica. Anexe no README de Python a arquitetura do projeto, em ordem e formatada, e coloque no README principal a imagem da arquitetura e flows por último. Evite detalhes repetitivos."
+
+**Resultado:**
+- README principal: badges da ESP32-CAM, Hetzner e Caddy; seção centralizada da ESP32-CAM com o link do vídeo; seção da VPS centralizada; tabela curta das partes no lugar das seções repetidas; diagrama C2 com o fluxo da câmera no fim.
+- README do backend: backend primeiro (rotas, modelo de buracos, Gemini, ESP32-CAM, SQLite, MQTT, MockAPI, VPS, como rodar), os 5 diagramas C4 em ordem (C1, C2, C3 da API, do app e do poste) e o programa de Lógica no fim, sem mudança de conteúdo.
+- Detalhes do treino e dos cuidados com o Gemini saíram do README principal e ficaram só no do backend.
